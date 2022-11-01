@@ -1,6 +1,6 @@
 use axum::{http::StatusCode, response::IntoResponse, routing::get, routing::post, Json, Router};
 use serde::{Deserialize, Serialize};
-use sqlx::{database::HasArguments, postgres::PgPoolOptions, PgPool};
+use sqlx::postgres::PgPoolOptions;
 use std::{env::args, net::SocketAddr};
 
 #[tokio::main]
@@ -11,14 +11,84 @@ async fn main() -> Result<(), sqlx::Error> {
     args.next();
 
     // we enter db password as second argument
-    let password = args.next().unwrap();
+    let password = args.next();
+    if password.is_none() {
+        panic!("Please enter database password as first argument");
+    }
+    let password = password.unwrap();
+
+    if password.len() == 0 {
+        panic!("Please enter password as argument")
+    }
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&format!(
-            "postgres://postgres:{password}@localhost:5432/world",
+            "postgres://postgres:{password}@localhost:5432/pollme",
         ))
         .await?;
+
+    sqlx::query(
+        r#"
+CREATE TABLE IF NOT EXISTS public.user (
+    id serial NOT NULL,
+    username character varying NOT NULL,
+    password character varying NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id)
+);
+    "#,
+    )
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        "
+CREATE TABLE IF NOT EXISTS public.post (
+    id serial NOT NULL,
+    title character varying NOT NULL,
+    first_choice character varying NOT NULL,
+    second_choice character varying NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    FOREIGN KEY (user_id) REFERENCES user(id),
+    FOREIGN KEY (vote_id) REFERENCES vote(id)
+);
+    ",
+    )
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        "
+CREATE TABLE IF NOT EXISTS public.vote (
+    id serial NOT NULL,
+    inc bigint NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT NOW(),
+    check (inc in (-1, 1)),
+    PRIMARY KEY (id),
+    FOREIGN KEY (user_id) REFERENCES user(id),
+    FOREIGN KEY (post_id) REFERENCES post(id)
+);
+    ",
+    )
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        "
+CREATE TABLE IF NOT EXISTS public.choice (
+    id serial NOT NULL,
+    choice character varying NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    FOREIGN KEY (post_id) REFERENCES post(id),
+    FOREIGN KEY (vote_id) REFERENCES vote(id)
+);
+    ",
+    )
+    .execute(&pool)
+    .await?;
 
     let (code,): (String,) = sqlx::query_as("SELECT code from country where name = 'Aruba'")
         .fetch_one(&pool)
