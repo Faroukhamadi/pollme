@@ -43,34 +43,44 @@ CREATE TABLE IF NOT EXISTS public.user (
     .await?;
 
     sqlx::query(
-        "
+        r#"
 CREATE TABLE IF NOT EXISTS public.post (
     id serial NOT NULL,
     title character varying NOT NULL,
     first_choice character varying NOT NULL,
     second_choice character varying NOT NULL,
     created_at timestamp without time zone NOT NULL DEFAULT NOW(),
+    user_id bigint,
+    vote_id bigint,
     PRIMARY KEY (id),
-    FOREIGN KEY (user_id) REFERENCES user(id),
-    FOREIGN KEY (vote_id) REFERENCES vote(id)
+    FOREIGN KEY (user_id) REFERENCES "user"(id)
 );
-    ",
+    "#,
     )
     .execute(&pool)
     .await?;
 
     sqlx::query(
-        "
+        r#"
 CREATE TABLE IF NOT EXISTS public.vote (
     id serial NOT NULL,
     inc bigint NOT NULL,
     created_at timestamp without time zone NOT NULL DEFAULT NOW(),
+    user_id bigint,
+    post_id bigint,
     check (inc in (-1, 1)),
     PRIMARY KEY (id),
-    FOREIGN KEY (user_id) REFERENCES user(id),
+    FOREIGN KEY (user_id) REFERENCES "user"(id),
     FOREIGN KEY (post_id) REFERENCES post(id)
 );
-    ",
+    "#,
+    )
+    .execute(&pool)
+    .await?;
+
+    sqlx::query(
+        r#"alter table public.post
+add constraint post_votes FOREIGN KEY (vote_id) REFERENCES vote(id);"#,
     )
     .execute(&pool)
     .await?;
@@ -81,14 +91,16 @@ CREATE TABLE IF NOT EXISTS public.choice (
     id serial NOT NULL,
     choice character varying NOT NULL,
     created_at timestamp without time zone NOT NULL DEFAULT NOW(),
+    post_id bigint,
     PRIMARY KEY (id),
-    FOREIGN KEY (post_id) REFERENCES post(id),
-    FOREIGN KEY (vote_id) REFERENCES vote(id)
+    FOREIGN KEY (post_id) REFERENCES post(id)
 );
     ",
     )
     .execute(&pool)
     .await?;
+
+    panic!("Done with migrations now I'm going to panic");
 
     let (code,): (String,) = sqlx::query_as("SELECT code from country where name = 'Aruba'")
         .fetch_one(&pool)
