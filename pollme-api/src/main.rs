@@ -1,7 +1,12 @@
-use axum::{http::StatusCode, response::IntoResponse, routing::get, routing::post, Json, Router};
+use axum::{
+    http::StatusCode, response::IntoResponse, routing::get, routing::post, Extension, Json, Router,
+};
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgPoolOptions;
-use std::{env::args, net::SocketAddr};
+use sqlx::{postgres::PgPoolOptions, types::chrono, PgPool, Pool, Postgres};
+use std::{env::args, net::SocketAddr, time};
+mod db;
+use crate::db::seed::seed_vote;
+use db::seed::{seed_posts, seed_users};
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -28,20 +33,11 @@ async fn main() -> Result<(), sqlx::Error> {
         ))
         .await?;
 
-    // seed_users(&pool).await?;
-    // seed_posts(&pool).await?;
-
-    panic!("done migrating down");
-
-    let (code,): (String,) = sqlx::query_as("SELECT code from country where name = 'Aruba'")
-        .fetch_one(&pool)
-        .await?;
-
-    println!("code is: {}", code);
-
     let app = Router::new()
         .route("/", get(root))
-        .route("/users", post(create_user));
+        .route("/users", get(users))
+        .layer(Extension(pool));
+    // .route("/users", get(users));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
@@ -59,25 +55,46 @@ async fn root() -> &'static str {
     "Hello, World!"
 }
 
-async fn create_user(Json(payload): Json<CreateUser>) -> impl IntoResponse {
-    let user = User {
-        id: 1337,
-        username: payload.username,
-    };
-
-    let u = Json(user);
-    println!("id: {}, username: {}", u.id, u.username);
-
-    (StatusCode::CREATED, u)
+async fn users(
+    Extension(pool): Extension<PgPool>,
+) -> Result<axum::Json<Vec<User>>, (StatusCode, String)> {
+    sqlx::query_as::<_, User>(r#"SELECT * FROM "user";"#)
+        .fetch_all(&pool)
+        .await
+        .map(|users| axum::Json(users))
+        .map_err(internal_error)
 }
+
+// async fn create_user(Extension(app_state): Extension<AppState>) -> impl IntoResponse {
+//     let user = User {
+//         id: 1337,
+//         username: "hello".to_string(),
+//         created_at: "".to_string(),
+//         password: "".to_string(),
+//     };
+
+//     let u = Json(user);
+//     println!("id: {}, username: {}", u.id, u.username);
+
+//     (StatusCode::CREATED, u)
+// }
 
 #[derive(Deserialize)]
 struct CreateUser {
     username: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 struct User {
-    id: u64,
+    id: i32,
     username: String,
+    password: String,
+    created_at: chrono::NaiveDateTime,
+}
+
+fn internal_error<E>(err: E) -> (StatusCode, String)
+where
+    E: std::error::Error,
+{
+    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }

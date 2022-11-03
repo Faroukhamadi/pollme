@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS public.post (
   title character varying NOT NULL,
   first_choice character varying NOT NULL,
   second_choice character varying NOT NULL,
+  first_choice_count integer NOT NULL DEFAULT 0,
+  second_choice_count integer NOT NULL DEFAULT 0,
   created_at timestamp without time zone NOT NULL DEFAULT NOW(),
   user_id bigint NOT NULL,
   PRIMARY KEY (id),
