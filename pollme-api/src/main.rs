@@ -2,10 +2,6 @@ use axum::{http::StatusCode, response::IntoResponse, routing::get, routing::post
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use std::{env::args, net::SocketAddr};
-mod db;
-// use crate::db::migrate::migrate_thingie;
-use db::migrate::{migrate_down, migrate_up};
-use db::seed::seed_users;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -32,11 +28,10 @@ async fn main() -> Result<(), sqlx::Error> {
         ))
         .await?;
 
-    seed_users(pool).await?;
+    // seed_users(&pool).await?;
+    // seed_posts(&pool).await?;
 
-    // migrate_up(&pool).await?;
-
-    panic!("done migrating up");
+    panic!("done migrating down");
 
     let (code,): (String,) = sqlx::query_as("SELECT code from country where name = 'Aruba'")
         .fetch_one(&pool)
