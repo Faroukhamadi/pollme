@@ -1,8 +1,15 @@
 use ::chrono::{NaiveDate, NaiveDateTime};
 use axum::{http::StatusCode, routing::get, Extension, Json, Router};
+use core::prelude::rust_2015;
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgPoolOptions, types::chrono, PgPool};
+use sqlx::{
+    postgres::PgPoolOptions,
+    types::{chrono, Decimal},
+    PgPool,
+};
 use std::{env::args, net::SocketAddr};
+
+use crate::db::seed::seed_vote;
 mod db;
 
 #[tokio::main]
@@ -29,7 +36,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
 
     let app = Router::new()
-        .route("/", get(root))
+        .route("/", get(posts))
         .route("/users", get(users).post(create_user))
         .layer(Extension(pool));
     // .route("/users", get(users));
@@ -46,8 +53,24 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn root() -> &'static str {
-    "Hello, World!"
+// might change this to order by votes and then date
+async fn posts(
+    Extension(pool): Extension<PgPool>,
+) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
+    sqlx::query_as::<_, Post>(
+        r#"
+select title, p.first_choice, p.second_choice, sum(v.inc) as votes,
+sum(p.first_choice_count) as first_choice_count, sum(p.second_choice_count) as
+second_choice_count, (p.first_choice_count + p.second_choice_count) as choice_count,
+p.created_at from post p inner join vote v on p.id = v.post_id group by title,
+p.first_choice, p.second_choice, p.created_at, choice_count order by choice_count desc,
+p.created_at desc;
+    "#,
+    )
+    .fetch_all(&pool)
+    .await
+    .map(|posts| axum::Json(posts))
+    .map_err(internal_error)
 }
 
 async fn users(
@@ -60,6 +83,7 @@ async fn users(
         .map_err(internal_error)
 }
 
+// TODO: Hash entered password
 async fn create_user(
     Extension(pool): Extension<PgPool>,
     Json(payload): Json<CreateUser>,
@@ -85,6 +109,18 @@ struct User {
     id: i32,
     username: String,
     password: String,
+    created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+struct Post {
+    title: String,
+    first_choice: String,
+    second_choice: String,
+    votes: Decimal,
+    first_choice_count: i64,
+    second_choice_count: i64,
+    choice_count: i32,
     created_at: chrono::NaiveDateTime,
 }
 

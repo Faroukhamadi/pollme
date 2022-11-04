@@ -1,6 +1,7 @@
 -- Add up migration script here
 CREATE TABLE IF NOT EXISTS public.vote (
   id serial NOT NULL,
+  -- change this to the correct type, int maybe?
   inc bigint NOT NULL,
   created_at timestamp without time zone NOT NULL DEFAULT NOW(),
   user_id bigint NOT NULL,
