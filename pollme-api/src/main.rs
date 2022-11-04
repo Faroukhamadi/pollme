@@ -1,6 +1,8 @@
-use ::chrono::{NaiveDate, NaiveDateTime};
-use axum::{http::StatusCode, routing::get, Extension, Json, Router};
-use core::prelude::rust_2015;
+use axum::{
+    http::{HeaderValue, StatusCode},
+    routing::get,
+    Extension, Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::{
     postgres::PgPoolOptions,
@@ -8,8 +10,7 @@ use sqlx::{
     PgPool,
 };
 use std::{env::args, net::SocketAddr};
-
-use crate::db::seed::seed_vote;
+use tower_http::cors::{Cors, CorsLayer};
 mod db;
 
 #[tokio::main]
@@ -38,7 +39,11 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = Router::new()
         .route("/", get(posts))
         .route("/users", get(users).post(create_user))
-        .layer(Extension(pool));
+        .layer(Extension(pool))
+        // might add allow methods like this "allow_methods([Method::GET])""
+        .layer(
+            CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
+        );
     // .route("/users", get(users));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));

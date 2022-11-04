@@ -1,6 +1,18 @@
+<script lang="ts">
+	import type { Post } from '../../routes/+page';
+
+	export let post: Post;
+</script>
+
 <div class="flex gap-5 bg-indigo-300 rounded-md m-4 p-4">
 	<div class="flex flex-col justify-center">
-		<button>
+		<button
+			on:click={(e) => {
+				// posts[0].votes += 1;
+				post.votes = (parseInt(post.votes) + 1).toString();
+				console.log('upvote');
+			}}
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				viewBox="0 0 24 24"
@@ -14,7 +26,7 @@
 				/></svg
 			>
 		</button>
-		<p class="text-center">0</p>
+		<p class="text-center">{post.votes}</p>
 		<button>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -31,13 +43,13 @@
 		</button>
 	</div>
 	<div class="flex flex-col">
-		<h3 class="text-xl">title</h3>
+		<h3 class="text-xl">{post.title.slice(50)}</h3>
 		<div>
-			<button class="btn btn-sm">thingie1</button>
-			<button class="btn btn-sm">thingie2</button>
+			<button class="btn btn-sm">{post.first_choice}</button>
+			<button class="btn btn-sm">{post.second_choice}</button>
 		</div>
 		<div class="flex gap-5 text-sm">
-			<p>1 Votes</p>
+			<p>{post.choice_count} votes</p>
 			<p class="text-slate-500">submitted 2 days ago</p>
 		</div>
 	</div>

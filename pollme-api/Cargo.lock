@@ -832,6 +832,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "tokio",
+ "tower-http",
 ]
 
 [[package]]
