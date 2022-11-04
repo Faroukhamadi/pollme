@@ -1,21 +1,16 @@
-use axum::{
-    http::StatusCode, response::IntoResponse, routing::get, routing::post, Extension, Json, Router,
-};
+use ::chrono::{NaiveDate, NaiveDateTime};
+use axum::{http::StatusCode, routing::get, Extension, Json, Router};
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgPoolOptions, types::chrono, PgPool, Pool, Postgres};
-use std::{env::args, net::SocketAddr, time};
+use sqlx::{postgres::PgPoolOptions, types::chrono, PgPool};
+use std::{env::args, net::SocketAddr};
 mod db;
-use crate::db::seed::seed_vote;
-use db::seed::{seed_posts, seed_users};
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let mut args = args();
 
-    // remove first argument since it's path
     args.next();
 
-    // we enter db password as second argument
     let password = args.next();
     if password.is_none() {
         panic!("Please enter database password as first argument");
@@ -35,7 +30,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let app = Router::new()
         .route("/", get(root))
-        .route("/users", get(users))
+        .route("/users", get(users).post(create_user))
         .layer(Extension(pool));
     // .route("/users", get(users));
 
@@ -65,23 +60,24 @@ async fn users(
         .map_err(internal_error)
 }
 
-// async fn create_user(Extension(app_state): Extension<AppState>) -> impl IntoResponse {
-//     let user = User {
-//         id: 1337,
-//         username: "hello".to_string(),
-//         created_at: "".to_string(),
-//         password: "".to_string(),
-//     };
-
-//     let u = Json(user);
-//     println!("id: {}, username: {}", u.id, u.username);
-
-//     (StatusCode::CREATED, u)
-// }
+async fn create_user(
+    Extension(pool): Extension<PgPool>,
+    Json(payload): Json<CreateUser>,
+) -> Result<axum::Json<User>, (StatusCode, String)> {
+    sqlx::query_as::<_, User>(&format!(
+        "INSERT INTO public.user (username, password) VALUES('{}', '{}') RETURNING *;",
+        payload.username, payload.password
+    ))
+    .fetch_one(&pool)
+    .await
+    .map(|user| axum::Json(user))
+    .map_err(internal_error)
+}
 
 #[derive(Deserialize)]
 struct CreateUser {
     username: String,
+    password: String,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
