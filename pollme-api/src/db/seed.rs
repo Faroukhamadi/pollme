@@ -48,9 +48,7 @@ pub async fn seed_vote(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
         }
         sqlx::query(&format!(
             "INSERT INTO public.vote (inc, user_id, post_id) VALUES({}, {}, {})",
-            inc,
-            post_and_user_id,
-            post_and_user_id
+            inc, post_and_user_id, post_and_user_id
         ))
         .execute(pool)
         .await?;
