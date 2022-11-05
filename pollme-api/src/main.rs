@@ -1,12 +1,12 @@
 use axum::{
     async_trait,
     extract::FromRequestParts,
-    http::{request::Parts, HeaderValue, StatusCode},
-    response::IntoResponse,
+    http::{header::SET_COOKIE, request::Parts, HeaderValue, StatusCode},
+    response::{AppendHeaders, IntoResponse},
     routing::{get, post},
     Extension, Json, RequestPartsExt, Router, TypedHeader,
 };
-use headers::{authorization::Bearer, Authorization};
+use headers::{authorization::Bearer, Authorization, HeaderMap, HeaderName};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -53,6 +53,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/users", get(users).post(create_user))
         .route("/protected", get(protected))
         .route("/authorize", post(authorize))
+        .route("/just", get(just_headers))
         .layer(Extension(pool))
         // might add allow methods like this "allow_methods([Method::GET])""
         .layer(
@@ -70,7 +71,19 @@ async fn main() -> Result<(), sqlx::Error> {
 
     Ok(())
 }
-
+async fn just_headers() -> (HeaderMap, &'static str) {
+    let mut headers = HeaderMap::new();
+    // headers.insert(
+    //     HeaderName::from_static("x-foo"),
+    //     HeaderValue::from_static("foo"),
+    // );
+    (headers, "foo")
+    // AppendHeaders([(SET_COOKIE, "zerzrez")])
+    // Headers(vec![(
+    //     HeaderName::from_static("X-Foo"),
+    //     HeaderValue::from_static("foo"),
+    // )])
+}
 // might change this to order by votes and then date
 async fn posts(
     Extension(pool): Extension<PgPool>,
@@ -124,13 +137,16 @@ async fn create_user(
     .map_err(internal_error)
 }
 
-async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, AuthError> {
+async fn authorize(
+    Json(payload): Json<AuthPayload>,
+) -> (HeaderMap, Result<Json<AuthBody>, AuthError>) {
+    let mut headers = HeaderMap::new();
     // check if the user sent the credentials
     if payload.client_id.is_empty() || payload.client_secret.is_empty() {
-        return Err(AuthError::MissingCredentials);
+        return (headers, Err(AuthError::MissingCredentials));
     }
     if payload.client_id != "farouk" || payload.client_secret != "password123" {
-        return Err(AuthError::WrongCredentials);
+        return (headers, Err(AuthError::WrongCredentials));
     }
     let claims = Claims {
         sub: "farouk".to_owned(),
@@ -138,9 +154,28 @@ async fn authorize(Json(payload): Json<AuthPayload>) -> Result<Json<AuthBody>, A
         exp: 2000000000,
     };
 
+    // Does expect return the expected error type
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
-        .map_err(|_| AuthError::TokenCreation)?;
-    Ok(Json(AuthBody::new(token)))
+        .map_err(|_| AuthError::TokenCreation)
+        .expect("Unable to generate token");
+
+    // AppendHeaders([(SET_COOKIE, "zerzrez")]);
+    // AppendHeaders([(
+    //     SET_COOKIE,
+    //     format!(
+    //         "sid=Bearer {}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Strict",
+    //         token
+    //     ),
+    // )]);
+    headers.insert(
+        HeaderName::from_static("set_cookie"),
+        HeaderValue::from_str(&format!(
+            "sid=Bearer {}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Strict",
+            token
+        ))
+        .expect("Failed Setting headers"),
+    );
+    (headers, Ok(Json(AuthBody::new(token.to_string()))))
 }
 
 fn internal_error<E>(err: E) -> (StatusCode, String)
