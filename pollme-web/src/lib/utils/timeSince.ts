@@ -1,4 +1,4 @@
-export default (date: number) => {
+export default (date: number): string => {
 	const seconds = Math.floor((new Date().valueOf() - date) / 1000);
 
 	let interval = seconds / 31536000;
