@@ -2,7 +2,7 @@ use axum::{
     async_trait,
     extract::FromRequestParts,
     http::{header::SET_COOKIE, request::Parts, HeaderValue, StatusCode},
-    response::{AppendHeaders, IntoResponse},
+    response::IntoResponse,
     routing::{get, post},
     Extension, Json, RequestPartsExt, Router, TypedHeader,
 };
@@ -53,7 +53,6 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/users", get(users).post(create_user))
         .route("/protected", get(protected))
         .route("/authorize", post(authorize))
-        .route("/just", get(just_headers))
         .layer(Extension(pool))
         // might add allow methods like this "allow_methods([Method::GET])""
         .layer(
@@ -71,20 +70,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     Ok(())
 }
-async fn just_headers() -> (HeaderMap, &'static str) {
-    let mut headers = HeaderMap::new();
-    // headers.insert(
-    //     HeaderName::from_static("x-foo"),
-    //     HeaderValue::from_static("foo"),
-    // );
-    (headers, "foo")
-    // AppendHeaders([(SET_COOKIE, "zerzrez")])
-    // Headers(vec![(
-    //     HeaderName::from_static("X-Foo"),
-    //     HeaderValue::from_static("foo"),
-    // )])
-}
-// might change this to order by votes and then date
+
 async fn posts(
     Extension(pool): Extension<PgPool>,
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
@@ -140,12 +126,15 @@ async fn create_user(
 async fn authorize(
     Json(payload): Json<AuthPayload>,
 ) -> (HeaderMap, Result<Json<AuthBody>, AuthError>) {
+    println!("inside authorize function");
+
     let mut headers = HeaderMap::new();
     // check if the user sent the credentials
     if payload.client_id.is_empty() || payload.client_secret.is_empty() {
         return (headers, Err(AuthError::MissingCredentials));
     }
     if payload.client_id != "farouk" || payload.client_secret != "password123" {
+        println!("they are different");
         return (headers, Err(AuthError::WrongCredentials));
     }
     let claims = Claims {
@@ -154,23 +143,16 @@ async fn authorize(
         exp: 2000000000,
     };
 
-    // Does expect return the expected error type
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
         .map_err(|_| AuthError::TokenCreation)
         .expect("Unable to generate token");
 
-    // AppendHeaders([(SET_COOKIE, "zerzrez")]);
-    // AppendHeaders([(
-    //     SET_COOKIE,
-    //     format!(
-    //         "sid=Bearer {}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Strict",
-    //         token
-    //     ),
-    // )]);
+    println!("we generated the token");
+
     headers.insert(
-        HeaderName::from_static("set_cookie"),
+        HeaderName::from_static("set-cookie"),
         HeaderValue::from_str(&format!(
-            "sid=Bearer {}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Strict",
+            "sid={}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Strict",
             token
         ))
         .expect("Failed Setting headers"),
