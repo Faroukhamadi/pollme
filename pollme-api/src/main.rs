@@ -1,12 +1,18 @@
 use axum::{
     async_trait,
+    body::Body,
     extract::FromRequestParts,
-    http::{header::SET_COOKIE, request::Parts, HeaderValue, StatusCode},
+    http::{
+        header::{self, SET_COOKIE},
+        request::Parts,
+        HeaderValue, Request, Response, StatusCode,
+    },
+    middleware::{self, Next},
     response::IntoResponse,
     routing::{get, post},
     Extension, Json, RequestPartsExt, Router, TypedHeader,
 };
-use headers::{authorization::Bearer, Authorization, HeaderMap, HeaderName};
+use headers::{authorization::Bearer, Authorization, Cookie, HeaderMap, HeaderName};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -49,7 +55,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
 
     let app = Router::new()
-        .route("/", get(posts))
+        .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
         .route("/protected", get(protected))
         .route("/authorize", post(authorize))
@@ -57,7 +63,8 @@ async fn main() -> Result<(), sqlx::Error> {
         // might add allow methods like this "allow_methods([Method::GET])""
         .layer(
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
-        );
+        )
+        .layer(middleware::from_fn(process_cookie));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
@@ -71,9 +78,28 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
+// async fn process_cookie(
+//     req: Request<Body>,
+//     next: Next<Body>,
+// ) -> Result<impl IntoResponse, (StatusCode, String)> {
+//     let cookie_val = req.headers().get("cookie");
+//     let cookie_val = cookie_val.unwrap().to_str().unwrap();
+
+//     if cookie_val == "hey" {
+//         let res = next.run(req).await;
+//         Ok(res)
+//     } else {
+//         println!("cookie_val: {}", cookie_val);
+//         Err((StatusCode::BAD_REQUEST, String::from("yikess")))
+//     }
+// }
+
 async fn posts(
     Extension(pool): Extension<PgPool>,
+    // req: Request<Body>,
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
+    println!("start of posts");
+
     sqlx::query_as::<_, Post>(
         r#"
 select title, p.first_choice, p.second_choice, sum(v.inc) as votes,

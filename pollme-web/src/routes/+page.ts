@@ -12,7 +12,7 @@ export interface Post {
 }
 
 export const load: PageLoad = async ({ fetch }) => {
-	const posts: Post[] = await (await fetch('http://localhost:3000')).json();
+	const posts: Post[] = await (await fetch('http://localhost:3000/posts')).json();
 
 	return {
 		posts
