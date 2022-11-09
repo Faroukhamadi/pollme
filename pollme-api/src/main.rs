@@ -49,17 +49,22 @@ async fn main() -> Result<(), sqlx::Error> {
         ))
         .await?;
 
-    let app = Router::new()
+    let with_auth = Router::new()
         .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
         .route("/protected", get(protected))
-        .route("/authorize", post(authorize))
         .layer(Extension(pool))
         // might add allow methods like this "allow_methods([Method::GET])""
         .layer(
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
         )
         .route_layer(middleware::from_fn(auth));
+
+    let without_auth = Router::new().route("/authorize", post(authorize)).layer(
+        CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
+    );
+
+    let app = Router::new().merge(with_auth).merge(without_auth);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
@@ -74,25 +79,32 @@ async fn main() -> Result<(), sqlx::Error> {
 }
 
 async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+    println!("AUTH MIDDLEWARE RUN");
+
     let cookie_header = req
         .headers()
         .get(header::COOKIE)
         .and_then(|header| header.to_str().ok());
 
     let cookie = if let Some(cookie_header) = cookie_header {
+        println!("cookie_header: {:?}", cookie_header);
         cookie_header
     } else {
+        println!("err1");
         return Err(StatusCode::UNAUTHORIZED);
     };
 
     if let Some((_, token_val)) = cookie.split_once("=") {
-        let token_data =
-            decode::<Claims>(token_val, &KEYS.decoding, &Validation::default()).unwrap();
-
-        req.extensions_mut().insert(token_data.claims);
-        Ok(next.run(req).await)
+        let token_data = decode::<Claims>(token_val, &KEYS.decoding, &Validation::default());
+        if let Ok(token_data) = token_data {
+            req.extensions_mut().insert(token_data.claims);
+            println!("we are going next");
+            Ok(next.run(req).await)
+        } else {
+            Err(StatusCode::UNAUTHORIZED)
+        }
     } else {
-        Err(StatusCode::UNAUTHORIZED)
+        Err(StatusCode::UNPROCESSABLE_ENTITY)
     }
 }
 
@@ -100,9 +112,6 @@ async fn posts(
     Extension(pool): Extension<PgPool>,
     Extension(claims): Extension<Claims>,
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
-    println!("start of posts");
-    println!("claims from param: {}", claims);
-
     sqlx::query_as::<_, Post>(
         r#"
     select title, p.first_choice, p.second_choice, sum(v.inc) as votes,
@@ -155,10 +164,8 @@ async fn create_user(
 async fn authorize(
     Json(payload): Json<AuthPayload>,
 ) -> (HeaderMap, Result<Json<AuthBody>, AuthError>) {
-    println!("inside authorize function");
-
     let mut headers = HeaderMap::new();
-    // check if the user sent the credentials
+
     if payload.client_id.is_empty() || payload.client_secret.is_empty() {
         return (headers, Err(AuthError::MissingCredentials));
     }
@@ -175,8 +182,6 @@ async fn authorize(
     let token = encode(&Header::default(), &claims, &KEYS.encoding)
         .map_err(|_| AuthError::TokenCreation)
         .expect("Unable to generate token");
-
-    println!("we generated the token");
 
     headers.insert(
         HeaderName::from_static("set-cookie"),
@@ -200,7 +205,7 @@ impl Display for Claims {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Username: {}\nExpiry date: {}\n company: {}",
+            "Username: {}\nExpiry date: {}\ncompany: {}",
             self.sub, self.exp, self.company
         )
     }
@@ -229,7 +234,7 @@ struct User {
     created_at: chrono::NaiveDateTime,
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize, sqlx::FromRow, Debug)]
 struct Post {
     title: String,
     first_choice: String,

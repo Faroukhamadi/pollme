@@ -22,6 +22,11 @@ export const actions: Actions = {
 				})
 			});
 
+			console.log('client_id: ', username);
+			console.log('client_secret: ', password);
+
+			console.log('response: ', res);
+
 			if (!res.ok) {
 				return invalid(400, { error: 'Invalid credentials', username });
 			}

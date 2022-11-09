@@ -12,7 +12,19 @@ export interface Post {
 }
 
 export const load: PageLoad = async ({ fetch }) => {
-	const posts: Post[] = await (await fetch('http://localhost:3000/posts')).json();
+	// const posts: Post[] = await (await fetch('http://localhost:3000/posts')).json();
+	console.log('we are fetching posts');
+	const res = await fetch('http://localhost:3000/posts', {
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json'
+		}
+	});
+	console.log('status code: ', res.status);
+	const posts: Post[] = await res.json();
+	console.log('posts: ', posts);
+
+	// console.log(posts.);
 
 	return {
 		posts
