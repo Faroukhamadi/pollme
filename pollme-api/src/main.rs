@@ -1,9 +1,9 @@
 use axum::{
     async_trait,
-    body::Body,
     extract::FromRequestParts,
-    http::{request::Parts, HeaderValue, Request, StatusCode},
-    response::IntoResponse,
+    http::{header, request::Parts, HeaderValue, Request, StatusCode},
+    middleware::{self, Next},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Extension, Json, RequestPartsExt, Router, TypedHeader,
 };
@@ -58,8 +58,8 @@ async fn main() -> Result<(), sqlx::Error> {
         // might add allow methods like this "allow_methods([Method::GET])""
         .layer(
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
-        );
-    // .layer(middleware::from_fn(process_cookie));
+        )
+        .route_layer(middleware::from_fn(auth));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
@@ -73,47 +73,45 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-// async fn process_cookie(
-//     req: Request<Body>,
-//     next: Next<Body>,
-// ) -> Result<impl IntoResponse, (StatusCode, String)> {
-//     let cookie_val = req.headers().get("cookie");
-//     let cookie_val = cookie_val.unwrap().to_str().unwrap();
+async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+    let cookie_header = req
+        .headers()
+        .get(header::COOKIE)
+        .and_then(|header| header.to_str().ok());
 
-//     if cookie_val == "hey" {
-//         let res = next.run(req).await;
-//         Ok(res)
-//     } else {
-//         println!("cookie_val: {}", cookie_val);
-//         Err((StatusCode::BAD_REQUEST, String::from("yikess")))
-//     }
-// }
+    let cookie = if let Some(cookie_header) = cookie_header {
+        cookie_header
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    if let Some((_, token_val)) = cookie.split_once("=") {
+        let token_data =
+            decode::<Claims>(token_val, &KEYS.decoding, &Validation::default()).unwrap();
+
+        req.extensions_mut().insert(token_data.claims);
+        Ok(next.run(req).await)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
+    }
+}
 
 async fn posts(
     Extension(pool): Extension<PgPool>,
-    req: Request<Body>,
+    Extension(claims): Extension<Claims>,
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
-    let cookie_header_val = req.headers().get("cookie");
-    let cookie_header_val = cookie_header_val.unwrap().to_str().unwrap();
-    let token = cookie_header_val.split_once("=");
-    if let Some((_, token_val)) = token {
-        println!("token_val: {}", token_val);
-        let token_data = decode::<Claims>(token_val, &KEYS.decoding, &Validation::default());
-        let token_data = token_data.unwrap();
-        println!("token_data: {:?}", token_data);
-    }
-
     println!("start of posts");
+    println!("claims from param: {}", claims);
 
     sqlx::query_as::<_, Post>(
         r#"
-select title, p.first_choice, p.second_choice, sum(v.inc) as votes,
-sum(p.first_choice_count) as first_choice_count, sum(p.second_choice_count) as
-second_choice_count, (p.first_choice_count + p.second_choice_count) as choice_count,
-p.created_at from post p inner join vote v on p.id = v.post_id group by title,
-p.first_choice, p.second_choice, p.created_at, choice_count order by choice_count desc,
-p.created_at desc;
-    "#,
+    select title, p.first_choice, p.second_choice, sum(v.inc) as votes,
+    sum(p.first_choice_count) as first_choice_count, sum(p.second_choice_count) as
+    second_choice_count, (p.first_choice_count + p.second_choice_count) as choice_count,
+    p.created_at from post p inner join vote v on p.id = v.post_id group by title,
+    p.first_choice, p.second_choice, p.created_at, choice_count order by choice_count desc,
+    p.created_at desc;
+        "#,
     )
     .fetch_all(&pool)
     .await
@@ -200,7 +198,11 @@ where
 
 impl Display for Claims {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Username: {}\nExpiry date: {}", self.sub, self.exp)
+        write!(
+            f,
+            "Username: {}\nExpiry date: {}\n company: {}",
+            self.sub, self.exp, self.company
+        )
     }
 }
 
@@ -288,7 +290,7 @@ impl Keys {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Claims {
     sub: String,
     company: String,
