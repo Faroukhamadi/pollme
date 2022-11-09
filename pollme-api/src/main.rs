@@ -2,17 +2,12 @@ use axum::{
     async_trait,
     body::Body,
     extract::FromRequestParts,
-    http::{
-        header::{self, SET_COOKIE},
-        request::Parts,
-        HeaderValue, Request, Response, StatusCode,
-    },
-    middleware::{self, Next},
+    http::{request::Parts, HeaderValue, Request, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Extension, Json, RequestPartsExt, Router, TypedHeader,
 };
-use headers::{authorization::Bearer, Authorization, Cookie, HeaderMap, HeaderName};
+use headers::{authorization::Bearer, Authorization, HeaderMap, HeaderName};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -63,8 +58,8 @@ async fn main() -> Result<(), sqlx::Error> {
         // might add allow methods like this "allow_methods([Method::GET])""
         .layer(
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
-        )
-        .layer(middleware::from_fn(process_cookie));
+        );
+    // .layer(middleware::from_fn(process_cookie));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
@@ -96,8 +91,18 @@ async fn main() -> Result<(), sqlx::Error> {
 
 async fn posts(
     Extension(pool): Extension<PgPool>,
-    // req: Request<Body>,
+    req: Request<Body>,
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
+    let cookie_header_val = req.headers().get("cookie");
+    let cookie_header_val = cookie_header_val.unwrap().to_str().unwrap();
+    let token = cookie_header_val.split_once("=");
+    if let Some((_, token_val)) = token {
+        println!("token_val: {}", token_val);
+        let token_data = decode::<Claims>(token_val, &KEYS.decoding, &Validation::default());
+        let token_data = token_data.unwrap();
+        println!("token_data: {:?}", token_data);
+    }
+
     println!("start of posts");
 
     sqlx::query_as::<_, Post>(
