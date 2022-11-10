@@ -1,6 +1,6 @@
 <script lang="ts">
 	import LoginForm from '$lib/components/loginForm.svelte';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData } from './$types';
 
 	export let form: ActionData;
 </script>

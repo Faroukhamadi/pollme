@@ -1,4 +1,4 @@
-import type { PageLoad } from './$types';
+import type { PageServerLoad } from './$types';
 
 export interface Post {
 	title: string;
@@ -11,9 +11,7 @@ export interface Post {
 	created_at: string;
 }
 
-export const load: PageLoad = async ({ fetch }) => {
-	// const posts: Post[] = await (await fetch('http://localhost:3000/posts')).json();
-	console.log('we are fetching posts');
+export const load: PageServerLoad = async ({ fetch }) => {
 	const res = await fetch('http://localhost:3000/posts', {
 		headers: {
 			Accept: 'application/json',
@@ -23,8 +21,6 @@ export const load: PageLoad = async ({ fetch }) => {
 	console.log('status code: ', res.status);
 	const posts: Post[] = await res.json();
 	console.log('posts: ', posts);
-
-	// console.log(posts.);
 
 	return {
 		posts

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import timeSince from '$lib/utils/timeSince';
-	import type { Post } from '../../routes/+page';
+	import type { Post } from '../../routes/+page.server';
 
 	export let post: Post;
 </script>

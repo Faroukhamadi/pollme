@@ -1,8 +1,8 @@
 <script lang="ts">
 	import Poll from '$lib/components/poll.svelte';
-	import type { PageData } from './$types';
+	import type { PageServerData } from './$types';
 
-	export let data: PageData;
+	export let data: PageServerData;
 </script>
 
 {#each data.posts as post}

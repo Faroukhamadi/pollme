@@ -151,6 +151,8 @@ pub(crate) async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Respon
         .get(header::COOKIE)
         .and_then(|header| header.to_str().ok());
 
+    println!("cookie header: {:?}", req.headers());
+
     let cookie = if let Some(cookie_header) = cookie_header {
         println!("cookie_header: {:?}", cookie_header);
         cookie_header
