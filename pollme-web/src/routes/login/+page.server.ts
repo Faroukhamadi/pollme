@@ -10,7 +10,7 @@ export const actions: Actions = {
 		const password = data.get('password');
 
 		try {
-			const res = await fetch('http://localhost:3000/authorize', {
+			const res = await fetch('http://localhost:3000/login', {
 				method: 'post',
 				headers: {
 					Accept: 'application/json',
