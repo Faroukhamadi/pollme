@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use argon2::Config;
 use axum::{
     async_trait,
     extract::FromRequestParts,
@@ -35,7 +34,6 @@ impl Keys {
 pub(crate) struct Claims {
     sub: String,
     username: String,
-    company: String,
     exp: usize,
 }
 
@@ -105,11 +103,7 @@ impl IntoResponse for AuthError {
 
 impl Display for Claims {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Username: {}\nExpiry date: {}\ncompany: {}",
-            self.sub, self.exp, self.company
-        )
+        write!(f, "Username: {}\nExpiry date: {}", self.sub, self.exp,)
     }
 }
 
@@ -118,37 +112,42 @@ pub(crate) async fn login(
     Json(payload): Json<AuthPayload>,
 ) -> (HeaderMap, Result<Json<AuthBody>, AuthError>) {
     // change expect to error mapping
-    let row: Result<(String,), sqlx::Error> =
-        sqlx::query_as(r#"SELECT password FROM "user" where username = $1;"#)
+    // let row: Result<(LoginUser,), sqlx::Error> =
+    let row =
+        sqlx::query_as::<_, LoginUser>(r#"SELECT id, password FROM "user" where username = $1;"#)
             .bind(&payload.client_id)
             .fetch_one(&pool)
             .await;
 
-    let Ok((password,)) = row else {
+    let Ok(LoginUser { id, password }) = row else {
         return (HeaderMap::default(), Err(AuthError::WrongCredentials));
     };
 
     // change this later to be unique for every password?
-    let salt = b"randomsalt";
-    let config = Config::default();
-    let hash = argon2::hash_encoded(password.as_bytes(), salt, &config).unwrap();
-    let matches = argon2::verify_encoded(&hash, password.as_bytes()).unwrap();
-    println!("matches: {}", matches);
+    // In prod make salt random for each password
+    // also this part is for signup
+    // let salt = b"randomsalt";
+    // let config = Config::default();
+    // let hash = argon2::hash_encoded(payload.client_secret.as_bytes(), salt, &config).unwrap();
+
+    let matches = argon2::verify_encoded(&password, payload.client_secret.as_bytes());
+    let Ok(matches) = matches else {
+        return (HeaderMap::default(), Err(AuthError::WrongCredentials));
+    };
+
+    if matches == false {
+        return (HeaderMap::default(), Err(AuthError::WrongCredentials));
+    }
 
     let mut headers = HeaderMap::new();
 
     if payload.client_id.is_empty() || payload.client_secret.is_empty() {
         return (headers, Err(AuthError::MissingCredentials));
     }
-    if payload.client_id != "farouk" || payload.client_secret != "password123" {
-        println!("they are different");
-        return (headers, Err(AuthError::WrongCredentials));
-    }
+
     let claims = Claims {
-        // replace this with id
-        sub: "farouk".to_owned(),
-        username: "farouk".to_owned(),
-        company: "ISI Ariana".to_owned(),
+        sub: id.to_string(),
+        username: payload.client_id.to_owned(),
         exp: 2000000000,
     };
 
@@ -196,4 +195,10 @@ pub(crate) async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Respon
     } else {
         Err(StatusCode::UNAUTHORIZED)
     }
+}
+
+#[derive(sqlx::FromRow, Debug)]
+struct LoginUser {
+    id: i32,
+    password: String,
 }
