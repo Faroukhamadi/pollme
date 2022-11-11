@@ -1,5 +1,5 @@
-use std::fmt::Display;
-
+use crate::{handlers::users::User, KEYS};
+use argon2::Config;
 use axum::{
     async_trait,
     extract::FromRequestParts,
@@ -13,8 +13,7 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
-
-use crate::KEYS;
+use std::fmt::Display;
 
 pub(crate) struct Keys {
     encoding: EncodingKey,
@@ -111,8 +110,6 @@ pub(crate) async fn login(
     Extension(pool): Extension<PgPool>,
     Json(payload): Json<AuthPayload>,
 ) -> (HeaderMap, Result<Json<AuthBody>, AuthError>) {
-    // change expect to error mapping
-    // let row: Result<(LoginUser,), sqlx::Error> =
     let row =
         sqlx::query_as::<_, LoginUser>(r#"SELECT id, password FROM "user" where username = $1;"#)
             .bind(&payload.client_id)
@@ -122,13 +119,6 @@ pub(crate) async fn login(
     let Ok(LoginUser { id, password }) = row else {
         return (HeaderMap::default(), Err(AuthError::WrongCredentials));
     };
-
-    // change this later to be unique for every password?
-    // In prod make salt random for each password
-    // also this part is for signup
-    // let salt = b"randomsalt";
-    // let config = Config::default();
-    // let hash = argon2::hash_encoded(payload.client_secret.as_bytes(), salt, &config).unwrap();
 
     let matches = argon2::verify_encoded(&password, payload.client_secret.as_bytes());
     let Ok(matches) = matches else {
@@ -148,6 +138,53 @@ pub(crate) async fn login(
     let claims = Claims {
         sub: id.to_string(),
         username: payload.client_id.to_owned(),
+        exp: 2000000000,
+    };
+
+    let token = encode(&Header::default(), &claims, &KEYS.encoding)
+        .map_err(|_| AuthError::TokenCreation)
+        .expect("Unable to generate token");
+
+    headers.insert(
+        HeaderName::from_static("set-cookie"),
+        HeaderValue::from_str(&format!(
+            "sid={}; Max-Age=86400; Path=/; HttpOnly; Secure; SameSite=Strict",
+            token
+        ))
+        .expect("Failed Setting headers"),
+    );
+    (headers, Ok(Json(AuthBody::new(token.to_string()))))
+}
+
+pub(crate) async fn signup(
+    Extension(pool): Extension<PgPool>,
+    Json(payload): Json<CreateUser>,
+) -> (HeaderMap, Result<Json<AuthBody>, AuthError>) {
+    let salt = b"randomsalt";
+    let config = Config::default();
+    let hash = argon2::hash_encoded(payload.password.as_bytes(), salt, &config).unwrap();
+
+    let mut headers = HeaderMap::new();
+
+    if payload.username.is_empty() || payload.password.is_empty() {
+        return (headers, Err(AuthError::MissingCredentials));
+    }
+
+    let row = sqlx::query_as::<_, User>(&format!(
+        "INSERT INTO public.user (username, password) VALUES('{}', '{}') RETURNING *;",
+        payload.username, hash
+    ))
+    .fetch_one(&pool)
+    .await;
+
+    // make query optimization maybe? by removing unnecessary fields
+    let Ok(User {id, username: _ ,password:_ , created_at: _ }) = row else {
+        return (HeaderMap::default(), Err(AuthError::WrongCredentials));
+    };
+
+    let claims = Claims {
+        sub: id.to_string(),
+        username: payload.username.to_string(),
         exp: 2000000000,
     };
 
@@ -200,5 +237,11 @@ pub(crate) async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Respon
 #[derive(sqlx::FromRow, Debug)]
 struct LoginUser {
     id: i32,
+    password: String,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct CreateUser {
+    username: String,
     password: String,
 }

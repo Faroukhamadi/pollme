@@ -16,6 +16,8 @@ use auth::{auth, login};
 use handlers::post::posts;
 use handlers::users::{create_user, users};
 
+use crate::auth::signup;
+
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
@@ -55,6 +57,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let without_auth = Router::new()
         .route("/login", post(login))
+        .route("/signup", post(signup))
         .layer(
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
         )

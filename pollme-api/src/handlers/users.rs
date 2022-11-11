@@ -5,10 +5,10 @@ use sqlx::PgPool;
 
 #[derive(Serialize, sqlx::FromRow, Debug)]
 pub(crate) struct User {
-    id: i32,
-    username: String,
-    password: String,
-    created_at: chrono::NaiveDateTime,
+    pub(crate) id: i32,
+    pub(crate) username: String,
+    pub(crate) password: String,
+    pub(crate) created_at: chrono::NaiveDateTime,
 }
 
 #[derive(Deserialize)]
