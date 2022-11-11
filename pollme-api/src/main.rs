@@ -47,16 +47,18 @@ async fn main() -> Result<(), sqlx::Error> {
     let with_auth = Router::new()
         .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
-        .layer(Extension(pool))
         // might add allow methods like this "allow_methods([Method::GET])""
         .layer(
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
         )
         .route_layer(middleware::from_fn(auth));
 
-    let without_auth = Router::new().route("/login", post(login)).layer(
-        CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
-    );
+    let without_auth = Router::new()
+        .route("/login", post(login))
+        .layer(
+            CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
+        )
+        .layer(Extension(pool));
 
     let app = Router::new().merge(with_auth).merge(without_auth);
 

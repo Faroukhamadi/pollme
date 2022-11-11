@@ -19,3 +19,4 @@ tower-http = { version = "0.3.4", features = ["cors"] }
 fake = "2.5"
 rand = "0.8"
 cookie = "0.16.1"
+rust-argon2 = "1.0"

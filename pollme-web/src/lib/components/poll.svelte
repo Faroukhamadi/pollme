@@ -5,13 +5,11 @@
 	export let post: Post;
 </script>
 
-<div class="flex gap-5 bg-indigo-300 rounded-md m-4 p-4">
+<div class="flex gap-5 bg-indigo-200 rounded-md m-4 p-4">
 	<div class="flex flex-col justify-center">
 		<button
-			on:click={(e) => {
-				// posts[0].votes += 1;
+			on:click={() => {
 				post.votes = (parseInt(post.votes) + 1).toString();
-				console.log('upvote');
 			}}
 		>
 			<svg
@@ -28,7 +26,11 @@
 			>
 		</button>
 		<p class="text-center">{post.votes}</p>
-		<button>
+		<button
+			on:click={() => {
+				post.votes = (parseInt(post.votes) - 1).toString();
+			}}
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				viewBox="0 0 24 24"

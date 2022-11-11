@@ -1,17 +1,19 @@
 use std::fmt::Display;
 
+use argon2::Config;
 use axum::{
     async_trait,
     extract::FromRequestParts,
     http::{header, request::Parts, Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
-    Json, RequestPartsExt, TypedHeader,
+    Extension, Json, RequestPartsExt, TypedHeader,
 };
 use headers::{authorization::Bearer, Authorization, HeaderMap, HeaderName, HeaderValue};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sqlx::PgPool;
 
 use crate::KEYS;
 
@@ -32,6 +34,7 @@ impl Keys {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct Claims {
     sub: String,
+    username: String,
     company: String,
     exp: usize,
 }
@@ -111,8 +114,27 @@ impl Display for Claims {
 }
 
 pub(crate) async fn login(
+    Extension(pool): Extension<PgPool>,
     Json(payload): Json<AuthPayload>,
 ) -> (HeaderMap, Result<Json<AuthBody>, AuthError>) {
+    // change expect to error mapping
+    let row: Result<(String,), sqlx::Error> =
+        sqlx::query_as(r#"SELECT password FROM "user" where username = $1;"#)
+            .bind(&payload.client_id)
+            .fetch_one(&pool)
+            .await;
+
+    let Ok((password,)) = row else {
+        return (HeaderMap::default(), Err(AuthError::WrongCredentials));
+    };
+
+    // change this later to be unique for every password?
+    let salt = b"randomsalt";
+    let config = Config::default();
+    let hash = argon2::hash_encoded(password.as_bytes(), salt, &config).unwrap();
+    let matches = argon2::verify_encoded(&hash, password.as_bytes()).unwrap();
+    println!("matches: {}", matches);
+
     let mut headers = HeaderMap::new();
 
     if payload.client_id.is_empty() || payload.client_secret.is_empty() {
@@ -123,7 +145,9 @@ pub(crate) async fn login(
         return (headers, Err(AuthError::WrongCredentials));
     }
     let claims = Claims {
+        // replace this with id
         sub: "farouk".to_owned(),
+        username: "farouk".to_owned(),
         company: "ISI Ariana".to_owned(),
         exp: 2000000000,
     };
