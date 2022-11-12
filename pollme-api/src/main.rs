@@ -69,7 +69,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // removed because running in docker
     // let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], deploy_port));
     println!("addr: {:?}", addr);
 
     println!("listening on {}", addr);
