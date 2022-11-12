@@ -25,6 +25,9 @@ static KEYS: Lazy<Keys> = Lazy::new(|| {
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set");
+    let host = std::env::var("DB_URL").expect("DB_URL must be set");
+    let port = std::env::var("DB_PORT").expect("DB_PORT must be set");
+    let db_name = std::env::var("DB_NAME").expect("DB_NAME must be set");
 
     if password.len() == 0 {
         panic!("DB_PASSWORD environment variable length must be greater than 0");
@@ -35,7 +38,11 @@ async fn main() -> Result<(), sqlx::Error> {
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&format!(
-            "postgres://postgres:{password}@localhost:5432/pollme",
+            // use this format for local development
+            // "postgres://postgres:{password}@localhost:5432/pollme",
+
+            // use this format for production
+            "postgresql://postgres:{password}@{host}:{port}/{db_name}"
         ))
         .await?;
 
