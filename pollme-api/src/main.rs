@@ -28,6 +28,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let host = std::env::var("DB_URL").expect("DB_URL must be set");
     let port = std::env::var("DB_PORT").expect("DB_PORT must be set");
     let db_name = std::env::var("DB_NAME").expect("DB_NAME must be set");
+    let deploy_port = std::env::var("PORT").expect("DEPLOY_PORT must be set");
 
     if password.len() == 0 {
         panic!("DB_PASSWORD environment variable length must be greater than 0");
