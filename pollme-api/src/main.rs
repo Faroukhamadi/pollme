@@ -24,19 +24,13 @@ static KEYS: Lazy<Keys> = Lazy::new(|| {
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    let mut args = args();
-
-    args.next();
-
-    let password = args.next();
-    if password.is_none() {
-        panic!("Please enter database password as first argument");
-    }
-    let password = password.unwrap();
+    let password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set");
 
     if password.len() == 0 {
-        panic!("Please enter password as argument")
+        panic!("DB_PASSWORD environment variable length must be greater than 0");
     }
+
+    println!("Connecting to database...");
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -44,6 +38,8 @@ async fn main() -> Result<(), sqlx::Error> {
             "postgres://postgres:{password}@localhost:5432/pollme",
         ))
         .await?;
+
+    println!("Connected to database");
 
     let with_auth = Router::new()
         .route("/posts", get(posts))
@@ -63,7 +59,10 @@ async fn main() -> Result<(), sqlx::Error> {
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
         );
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    // removed because running in docker
+    // let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    println!("addr: {:?}", addr);
 
     println!("listening on {}", addr);
 

@@ -1,0 +1,8 @@
+# will have compiled files and executables
+debug/
+target/
+
+# remove it if creating an executable, leave it for creating a library
+Cargo.lock
+
+**/*.rs.bk
