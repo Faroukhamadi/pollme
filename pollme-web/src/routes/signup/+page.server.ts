@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { invalid, redirect } from '@sveltejs/kit';
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
+
+export const load: PageServerLoad = async ({ locals }) => {
+	if (locals.user) {
+		throw redirect(302, '/');
+	}
+};
 
 export const actions: Actions = {
 	default: async ({ cookies, request }) => {
@@ -44,10 +50,10 @@ export const actions: Actions = {
 				httpOnly: setCookieMap.has('HttpOnly')!,
 				secure: setCookieMap.has('Secure')!
 			});
+			throw redirect(302, '/');
 		} catch (error) {
-			console.log(error);
+			console.log('we have an error', error);
 			throw redirect(302, '/get-the-fuck-out-of-here');
 		}
-		return { success: true };
 	}
 };

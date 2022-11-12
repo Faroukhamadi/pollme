@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Poll from '$lib/components/poll.svelte';
 	import type { PageServerData } from './$types';
+	import Poll from '$lib/components/poll.svelte';
 
 	export let data: PageServerData;
 </script>

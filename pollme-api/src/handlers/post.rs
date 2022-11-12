@@ -21,6 +21,7 @@ pub(crate) async fn posts(
     Extension(pool): Extension<PgPool>,
     Extension(_): Extension<Claims>,
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
+    println!("posts is executed");
     sqlx::query_as::<_, Post>(
         r#"
     select title, p.first_choice, p.second_choice, sum(v.inc) as votes,

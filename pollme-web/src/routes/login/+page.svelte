@@ -5,11 +5,7 @@
 	export let form: ActionData;
 </script>
 
-{#if form?.success}
-	<div class="bg-green-500">
-		{form?.success}
-	</div>
-{:else if form?.error}
+{#if form?.error}
 	<div class="bg-red-400">{form?.error}</div>
 {:else}
 	<div class="bg-blue-400">Nothing to see here</div>

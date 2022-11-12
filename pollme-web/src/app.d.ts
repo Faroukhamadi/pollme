@@ -4,6 +4,11 @@
 declare namespace App {
 	interface Locals {
 		token?: string;
+		user: {
+			sub: string;
+			username: string;
+			exp: string;
+		};
 	}
 	// interface PageData {}
 	// interface Error {}

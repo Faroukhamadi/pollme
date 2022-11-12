@@ -9,14 +9,13 @@ use once_cell::sync::Lazy;
 use sqlx::postgres::PgPoolOptions;
 use std::{env::args, net::SocketAddr};
 use tower_http::cors::CorsLayer;
+
 mod auth;
 mod db;
 mod handlers;
-use auth::{auth, login};
+use auth::{auth, login, signup};
 use handlers::post::posts;
 use handlers::users::{create_user, users};
-
-use crate::auth::signup;
 
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
@@ -50,20 +49,19 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
         // might add allow methods like this "allow_methods([Method::GET])""
-        .layer(
-            CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
-        )
         .route_layer(middleware::from_fn(auth));
 
     let without_auth = Router::new()
         .route("/login", post(login))
-        .route("/signup", post(signup))
+        .route("/signup", post(signup));
+
+    let app = Router::new()
+        .merge(with_auth)
+        .merge(without_auth)
+        .layer(Extension(pool))
         .layer(
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
-        )
-        .layer(Extension(pool));
-
-    let app = Router::new().merge(with_auth).merge(without_auth);
+        );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 

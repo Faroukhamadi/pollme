@@ -1,3 +1,4 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export interface Post {
@@ -11,14 +12,17 @@ export interface Post {
 	created_at: string;
 }
 
-export const load: PageServerLoad = async ({ fetch }) => {
+export const load: PageServerLoad = async ({ fetch, locals }) => {
+	if (!locals.user) {
+		throw redirect(307, '/login');
+	}
 	const res = await fetch('http://localhost:3000/posts', {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json'
 		}
 	});
-	console.log('status code: ', res.status);
+
 	const posts: Post[] = await res.json();
 	console.log('posts: ', posts);
 
