@@ -8,7 +8,7 @@ use fake::{
 };
 use sqlx::{Pool, Postgres};
 
-pub async fn _seed_users(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+pub async fn seed_users(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     for _ in 1..=10 {
         sqlx::query(&format!(
             "INSERT INTO public.user (username, password) VALUES('{}', '{}')",
@@ -22,7 +22,7 @@ pub async fn _seed_users(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn _seed_posts(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+pub async fn seed_posts(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     for user_id in 1..=10 {
         sqlx::query(&format!(
             "INSERT INTO public.post (title, first_choice, second_choice, user_id) VALUES('{}', '{}', '{}', {})",
@@ -38,7 +38,7 @@ pub async fn _seed_posts(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn _seed_vote(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+pub async fn seed_vote(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     for post_and_user_id in 1..=10 {
         let inc;
         if post_and_user_id % 2 == 0 {

@@ -17,6 +17,8 @@ use auth::{auth, login, signup};
 use handlers::post::posts;
 use handlers::users::{create_user, users};
 
+use crate::db::seed::{seed_posts, seed_users, seed_vote};
+
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
@@ -47,6 +49,10 @@ async fn main() -> Result<(), sqlx::Error> {
             "postgresql://postgres:{password}@{host}:{port}/{db_name}"
         ))
         .await?;
+
+    seed_users(&pool).await?;
+    seed_posts(&pool).await?;
+    seed_vote(&pool).await?;
 
     println!("Connected to database");
 
