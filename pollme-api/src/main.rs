@@ -7,7 +7,7 @@ use axum::{
 };
 use once_cell::sync::Lazy;
 use sqlx::postgres::PgPoolOptions;
-use std::{env::args, net::SocketAddr};
+use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 
 mod auth;
@@ -29,6 +29,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let port = std::env::var("DB_PORT").expect("DB_PORT must be set");
     let db_name = std::env::var("DB_NAME").expect("DB_NAME must be set");
     let deploy_port = std::env::var("PORT").expect("DEPLOY_PORT must be set");
+    let deploy_port = deploy_port.parse::<u16>().unwrap();
 
     if password.len() == 0 {
         panic!("DB_PASSWORD environment variable length must be greater than 0");
@@ -69,6 +70,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // removed because running in docker
     // let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+
     let addr = SocketAddr::from(([0, 0, 0, 0], deploy_port));
     println!("addr: {:?}", addr);
 
