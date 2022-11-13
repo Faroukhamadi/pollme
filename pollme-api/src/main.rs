@@ -5,6 +5,8 @@ use axum::{
     routing::{get, post},
     Extension, Router,
 };
+// use http::header::{ACCEPT, AUTHORIZATION};
+
 use dotenv::dotenv;
 use once_cell::sync::Lazy;
 use sqlx::postgres::PgPoolOptions;
@@ -15,10 +17,8 @@ mod auth;
 mod db;
 mod handlers;
 use auth::{auth, login, signup};
-use handlers::post::posts;
+use handlers::post::{posts, vote};
 use handlers::users::{create_user, users};
-
-use crate::db::seed::{_seed_posts, _seed_users, _seed_vote};
 
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
@@ -50,16 +50,13 @@ async fn main() -> Result<(), sqlx::Error> {
         ))
         .await?;
 
-    _seed_users(&pool).await?;
-    _seed_posts(&pool).await?;
-    _seed_vote(&pool).await?;
-
     println!("Connected to database");
 
     let with_auth = Router::new()
         .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
-        .route_layer(middleware::from_fn(auth));
+        .route("/posts/:post_id/vote", post(vote))
+        .layer(middleware::from_fn(auth));
 
     let without_auth = Router::new()
         .route("/login", post(login))
@@ -70,7 +67,9 @@ async fn main() -> Result<(), sqlx::Error> {
         .merge(without_auth)
         .layer(Extension(pool))
         .layer(
-            CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
+            CorsLayer::new()
+                .allow_credentials(true)
+                .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
         );
 
     let addr = SocketAddr::from((ip_addr, server_port));

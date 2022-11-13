@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export interface Post {
+	id: number;
 	title: string;
 	first_choice: string;
 	second_choice: string;

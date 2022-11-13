@@ -3,13 +3,29 @@
 	import type { Post } from '../../routes/+page.server';
 
 	export let post: Post;
+
+	enum Vote {
+		Downvote = -1,
+		Removevote = 0,
+		Upvote = 1
+	}
 </script>
 
 <div class="flex gap-5 bg-indigo-200 rounded-md m-4 p-4">
 	<div class="flex flex-col justify-center">
 		<button
-			on:click={() => {
-				post.votes = (parseInt(post.votes) + 1).toString();
+			on:click={async (e) => {
+				// e.currentTarget.disabled = true;
+
+				const res = await fetch(`http://localhost:3000/posts/${post.id}/vote?id=${Vote.Upvote}`, {
+					credentials: 'include',
+					method: 'POST'
+				}).catch((e) => console.error(e));
+
+				// e.currentTarget.disabled = false;
+
+				// const data = await res.json();
+				// console.log('data', data);
 			}}
 		>
 			<svg
