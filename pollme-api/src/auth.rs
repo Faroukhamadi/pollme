@@ -31,7 +31,7 @@ impl Keys {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct Claims {
-    sub: String,
+    pub(crate) sub: String,
     username: String,
     exp: usize,
 }
@@ -171,7 +171,7 @@ pub(crate) async fn signup(
     }
 
     let row = sqlx::query_as::<_, User>(&format!(
-        "INSERT INTO public.user (username, password) VALUES('{}', '{}') RETURNING *;",
+        "insert into public.user (username, password) values('{}', '{}') returning *;",
         payload.username, hash
     ))
     .fetch_one(&pool)

@@ -18,6 +18,8 @@ use auth::{auth, login, signup};
 use handlers::post::posts;
 use handlers::users::{create_user, users};
 
+use crate::db::seed::{_seed_posts, _seed_users, _seed_vote};
+
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
@@ -44,11 +46,13 @@ async fn main() -> Result<(), sqlx::Error> {
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&format!(
-            // use this format for local development
-            // "postgres://postgres:{password}@localhost:5432/pollme",
             "postgresql://postgres:{password}@{host}:{db_port}/{db_name}"
         ))
         .await?;
+
+    _seed_users(&pool).await?;
+    _seed_posts(&pool).await?;
+    _seed_vote(&pool).await?;
 
     println!("Connected to database");
 
