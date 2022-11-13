@@ -1,13 +1,14 @@
 use auth::Keys;
 use axum::{
     http::{HeaderValue, StatusCode},
-    middleware::{self},
+    middleware,
     routing::{get, post},
     Extension, Router,
 };
+use dotenv::dotenv;
 use once_cell::sync::Lazy;
 use sqlx::postgres::PgPoolOptions;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use tower_http::cors::CorsLayer;
 
 mod auth;
@@ -17,8 +18,6 @@ use auth::{auth, login, signup};
 use handlers::post::posts;
 use handlers::users::{create_user, users};
 
-use crate::db::seed::{seed_posts, seed_users, seed_vote};
-
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
     Keys::new(secret.as_bytes())
@@ -26,16 +25,19 @@ static KEYS: Lazy<Keys> = Lazy::new(|| {
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+    dotenv().ok();
+
     let password = std::env::var("DB_PASSWORD").expect("DB_PASSWORD must be set");
     let host = std::env::var("DB_URL").expect("DB_URL must be set");
-    let port = std::env::var("DB_PORT").expect("DB_PORT must be set");
+    let db_port = std::env::var("DB_PORT").expect("DB_PORT must be set");
     let db_name = std::env::var("DB_NAME").expect("DB_NAME must be set");
-    let deploy_port = std::env::var("PORT").expect("DEPLOY_PORT must be set");
-    let deploy_port = deploy_port.parse::<u16>().unwrap();
-
-    if password.len() == 0 {
-        panic!("DB_PASSWORD environment variable length must be greater than 0");
-    }
+    let server_port = std::env::var("PORT").expect("DEPLOY_PORT must be set");
+    let server_port = server_port.parse::<u16>().unwrap();
+    let ip_addr = if let Ok(ip) = std::env::var("IP_ADDR") {
+        ip.parse::<IpAddr>().unwrap()
+    } else {
+        "0.0.0.0".parse::<IpAddr>().unwrap()
+    };
 
     println!("Connecting to database...");
 
@@ -44,22 +46,15 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(&format!(
             // use this format for local development
             // "postgres://postgres:{password}@localhost:5432/pollme",
-
-            // use this format for production
-            "postgresql://postgres:{password}@{host}:{port}/{db_name}"
+            "postgresql://postgres:{password}@{host}:{db_port}/{db_name}"
         ))
         .await?;
-
-    seed_users(&pool).await?;
-    seed_posts(&pool).await?;
-    seed_vote(&pool).await?;
 
     println!("Connected to database");
 
     let with_auth = Router::new()
         .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
-        // might add allow methods like this "allow_methods([Method::GET])""
         .route_layer(middleware::from_fn(auth));
 
     let without_auth = Router::new()
@@ -74,11 +69,7 @@ async fn main() -> Result<(), sqlx::Error> {
             CorsLayer::new().allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap()),
         );
 
-    // removed because running in docker
-    // let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-
-    let addr = SocketAddr::from(([0, 0, 0, 0], deploy_port));
-    println!("addr: {:?}", addr);
+    let addr = SocketAddr::from((ip_addr, server_port));
 
     println!("listening on {}", addr);
 
