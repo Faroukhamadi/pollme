@@ -1,3 +1,4 @@
+use axum::Json;
 use axum::{http::StatusCode, Extension};
 use serde::Serialize;
 use sqlx::{types::Decimal, PgPool};
@@ -21,7 +22,6 @@ pub(crate) async fn posts(
     Extension(pool): Extension<PgPool>,
     Extension(_): Extension<Claims>,
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
-    println!("posts is executed");
     sqlx::query_as::<_, Post>(
         r#"
     select title, p.first_choice, p.second_choice, sum(v.inc) as votes,
@@ -36,4 +36,18 @@ pub(crate) async fn posts(
     .await
     .map(|posts| axum::Json(posts))
     .map_err(internal_error)
+}
+
+pub(crate) async fn vote(
+    Extension(pool): Extension<PgPool>,
+    Extension(claims): Extension<Claims>,
+    // Change post to vote to match return type
+) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
+    //  id | inc |         created_at         | user_id | post_id
+    sqlx::query_as(&format!(
+        "
+    insert into vote (inc, user_id, post_id) values('{}', '{}') returning *;
+    ",
+        claims.sub, 1
+    ))
 }
