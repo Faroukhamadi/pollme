@@ -9,5 +9,6 @@ CREATE TABLE IF NOT EXISTS public.vote (
   check (inc in (-1, 1)),
   PRIMARY KEY (id),
   FOREIGN KEY (user_id) REFERENCES "user"(id),
-  FOREIGN KEY (post_id) REFERENCES post(id)
+  FOREIGN KEY (post_id) REFERENCES post(id),
+  CONSTRAINT user_unique UNIQUE (user_id)
 );

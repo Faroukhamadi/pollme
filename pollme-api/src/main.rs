@@ -5,7 +5,6 @@ use axum::{
     routing::{get, post},
     Extension, Router,
 };
-// use http::header::{ACCEPT, AUTHORIZATION};
 
 use dotenv::dotenv;
 use once_cell::sync::Lazy;

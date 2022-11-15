@@ -4,28 +4,35 @@
 
 	export let post: Post;
 
+	let isFetching = false;
+
 	enum Vote {
 		Downvote = -1,
 		Removevote = 0,
 		Upvote = 1
 	}
+
+	const delay = (t: number) => new Promise((resolve) => setTimeout(resolve, t));
 </script>
 
 <div class="flex gap-5 bg-indigo-200 rounded-md m-4 p-4">
 	<div class="flex flex-col justify-center">
 		<button
-			on:click={async (e) => {
-				// e.currentTarget.disabled = true;
-
-				const res = await fetch(`http://localhost:3000/posts/${post.id}/vote?id=${Vote.Upvote}`, {
+			disabled={isFetching}
+			class="disabled:cursor-pointer"
+			on:click={() => {
+				post.votes = (parseInt(post.votes) + 1).toString();
+				isFetching = true;
+				fetch(`http://localhost:3000/posts/${post.id}/vote?id=${Vote.Upvote}`, {
 					credentials: 'include',
 					method: 'POST'
-				}).catch((e) => console.error(e));
-
-				// e.currentTarget.disabled = false;
-
-				// const data = await res.json();
-				// console.log('data', data);
+				})
+					.then(() => {
+						delay(4000)
+							.then(() => (isFetching = false))
+							.catch((e) => console.error(e));
+					})
+					.catch((e) => console.error(e));
 			}}
 		>
 			<svg
@@ -43,8 +50,22 @@
 		</button>
 		<p class="text-center">{post.votes}</p>
 		<button
+			disabled={isFetching}
+			class="disabled:cursor-pointer"
 			on:click={() => {
 				post.votes = (parseInt(post.votes) - 1).toString();
+
+				isFetching = true;
+				fetch(`http://localhost:3000/posts/${post.id}/vote?id=${Vote.Downvote}`, {
+					credentials: 'include',
+					method: 'POST'
+				})
+					.then(() => {
+						delay(4000)
+							.then(() => (isFetching = false))
+							.catch((e) => console.error(e));
+					})
+					.catch((e) => console.error(e));
 			}}
 		>
 			<svg
