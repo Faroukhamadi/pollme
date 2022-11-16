@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.vote (
 );
 
 CREATE
-OR REPLACE FUNCTION toggle_vote(inc NUMERIC, uid NUMERIC, pid NUMERIC,) RETURNS NUMERIC AS $ $ DECLARE row_exists NUMERIC;
+OR REPLACE FUNCTION toggle_vote(inc bigint, uid bigint, pid bigint) RETURNS bigint AS $ $ DECLARE row_exists bigint;
 
 BEGIN
 SELECT
@@ -38,7 +38,7 @@ ELSE
 INSERT INTO
   vote(inc, user_id, post_id)
 VALUES
-  (inc, uid, pid);
+(inc, uid, pid);
 
 RETURN 1;
 

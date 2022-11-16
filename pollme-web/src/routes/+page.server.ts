@@ -7,6 +7,7 @@ export interface Post {
 	first_choice: string;
 	second_choice: string;
 	votes: string;
+	vote: number;
 	first_choice_count: number;
 	second_choice_count: number;
 	choice_count: number;
@@ -23,7 +24,6 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 			'Content-Type': 'application/json'
 		}
 	});
-	console.log('response: ', res);
 
 	const posts: Post[] = await res.json();
 	console.log('posts: ', posts);
