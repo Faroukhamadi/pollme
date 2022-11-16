@@ -48,6 +48,8 @@ pub(crate) async fn vote(
 ) -> Result<axum::Json<i64>, (StatusCode, String)> {
     let vote_id = vote.id as i8;
 
+    println!("vote id is: {}", vote_id);
+
     match vote_id.into() {
         VoteChoice::UpVote => {
             let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
@@ -59,14 +61,15 @@ pub(crate) async fn vote(
                     .await
                     .map(|res: (i64,)| axum::Json(res.0))
                     .map_err(internal_error);
+            println!("err: {:?}", row.clone().err());
             row
         }
         VoteChoice::DownVote => {
             let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
                 sqlx::query_as("select toggle_vote($1, $2, $3)")
-                    .bind(vote_id)
-                    .bind(claims.sub)
-                    .bind(post_id)
+                    .bind::<i64>(vote_id as i64)
+                    .bind::<i64>(claims.sub.parse().unwrap())
+                    .bind::<i64>(post_id.parse().unwrap())
                     .fetch_one(&pool)
                     .await
                     .map(|res: (i64,)| axum::Json(res.0))
@@ -118,7 +121,7 @@ impl From<i8> for VoteChoice {
 //     SELECT 1
 //     INTO row_exists
 //     FROM vote
-//     WHERE user_id = uid and post_id = pid;
+//     WHERE = uid and post_id = pid;
 
 //     IF (row_exists > 0) THEN
 //         DELETE FROM vote WHERE user_id = uid and post_id = pid;

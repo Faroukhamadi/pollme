@@ -49,7 +49,7 @@
 				fill="currentColor"
 				aria-hidden="true"
 				class="h-7 w-7 text-neutral-500 hover:rounded-sm hover:bg-neutral-700 hover:bg-neutral-600 hover:text-green-400"
-				class:text-green-400={post.vote}
+				class:text-green-400={post.vote === 1 ? true : false}
 				><path
 					fill-rule="evenodd"
 					d="M11.47 7.72a.75.75 0 011.06 0l7.5 7.5a.75.75 0 11-1.06 1.06L12 9.31l-6.97 6.97a.75.75 0 01-1.06-1.06l7.5-7.5z"
@@ -74,13 +74,12 @@
 								if (post.vote === 1) {
 									post.votes = (parseInt(post.votes) - 2).toString();
 									post.vote = -1;
-									if (post.vote === -1) {
-										post.votes = (parseInt(post.votes) + 1).toString();
-										post.vote = 0;
-									} else if (post.vote === 0) {
-										post.votes = (parseInt(post.votes) - 1).toString();
-										post.vote = -1;
-									}
+								} else if (post.vote === -1) {
+									post.votes = (parseInt(post.votes) + 1).toString();
+									post.vote = 0;
+								} else if (post.vote === 0) {
+									post.votes = (parseInt(post.votes) - 1).toString();
+									post.vote = -1;
 								}
 							})
 							.catch((e) => console.error(e));
@@ -93,6 +92,7 @@
 				viewBox="0 0 24 24"
 				fill="currentColor"
 				aria-hidden="true"
+				class:text-red-400={post.vote === -1 ? true : false}
 				class="h-7 w-7 text-neutral-500 hover:rounded-sm hover:bg-neutral-700 hover:bg-neutral-600 hover:text-red-400"
 				><path
 					fill-rule="evenodd"
