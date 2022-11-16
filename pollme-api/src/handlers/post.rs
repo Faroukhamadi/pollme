@@ -25,10 +25,10 @@ pub(crate) async fn posts(
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
     sqlx::query_as::<_, Post>(
         r#"
-    select p.id, title, p.first_choice, p.second_choice, sum(v.inc) as votes,
+    select p.id, title, p.first_choice, p.second_choice, coalesce(sum(v.inc),0) as votes,
     sum(p.first_choice_count) as first_choice_count, sum(p.second_choice_count) as
     second_choice_count, (p.first_choice_count + p.second_choice_count) as choice_count,
-    p.created_at from post p inner join vote v on p.id = v.post_id group by p.id, title,
+    p.created_at from post p left join vote v on p.id = v.post_id group by p.id, title,
     p.first_choice, p.second_choice, p.created_at, choice_count order by choice_count desc,
     p.created_at desc;
         "#,
@@ -44,34 +44,45 @@ pub(crate) async fn vote(
     Extension(claims): Extension<Claims>,
     Path(post_id): Path<String>,
     vote: Query<VoteParam>,
-) -> Result<axum::Json<Vote>, (StatusCode, String)> {
+) -> Result<axum::Json<i64>, (StatusCode, String)> {
     let vote_id = vote.id as i8;
 
     match vote_id.into() {
-        VoteChoice::UpVote => sqlx::query_as::<_, Vote>(&format!(
-            "insert into vote (inc, user_id, post_id) values('{}', '{}', '{}') returning *;",
-            vote_id, claims.sub, post_id
-        ))
-        .fetch_one(&pool)
-        .await
-        .map(|user| axum::Json(user))
-        .map_err(internal_error),
-        VoteChoice::DownVote => sqlx::query_as::<_, Vote>(&format!(
-            "insert into vote (inc, user_id, post_id) values('{}', '{}', '{}') returning *;",
-            vote_id, claims.sub, post_id
-        ))
-        .fetch_one(&pool)
-        .await
-        .map(|user| axum::Json(user))
-        .map_err(internal_error),
-        VoteChoice::RemoveVote => sqlx::query_as::<_, Vote>(&format!(
-            "delete from vote where user_id='{}' and post_id='{}' returning *;",
-            vote_id, claims.sub
-        ))
-        .fetch_one(&pool)
-        .await
-        .map(|user| axum::Json(user))
-        .map_err(internal_error),
+        VoteChoice::UpVote => {
+            let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
+                sqlx::query_as("select toggle_vote($1, $2, $3)")
+                    .bind::<i64>(vote_id as i64)
+                    .bind::<i64>(claims.sub.parse().unwrap())
+                    .bind::<i64>(post_id.parse().unwrap())
+                    .fetch_one(&pool)
+                    .await
+                    .map(|res: (i64,)| axum::Json(res.0))
+                    .map_err(internal_error);
+            row
+        }
+        VoteChoice::DownVote => {
+            let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
+                sqlx::query_as("select toggle_vote($1, $2, $3)")
+                    .bind(vote_id)
+                    .bind(claims.sub)
+                    .bind(post_id)
+                    .fetch_one(&pool)
+                    .await
+                    .map(|res: (i64,)| axum::Json(res.0))
+                    .map_err(internal_error);
+            row
+        }
+        VoteChoice::RemoveVote => {
+            let row = sqlx::query_as(&format!(
+                "delete from vote where user_id='{}' and post_id='{}' returning *;",
+                vote_id, claims.sub
+            ))
+            .fetch_one(&pool)
+            .await
+            .map(|user: (i64,)| axum::Json(user.0))
+            .map_err(internal_error);
+            row
+        }
     }
 }
 
@@ -105,3 +116,30 @@ impl From<i8> for VoteChoice {
         }
     }
 }
+
+// CREATE OR REPLACE FUNCTION toggle_vote(
+//     inc bigint,
+//     uid bigint,
+//     pid bigint
+// )
+// RETURNS bigint AS $$
+// DECLARE
+//     row_exists bigint;
+// BEGIN
+
+//     SELECT 1
+//     INTO row_exists
+//     FROM vote
+//     WHERE user_id = uid and post_id = pid;
+
+//     IF (row_exists > 0) THEN
+//         DELETE FROM vote WHERE user_id = uid and post_id = pid;
+//         RETURN 0;
+//     ELSE
+//         INSERT INTO vote(inc, user_id, post_id) VALUES(inc, uid, pid);
+//         RETURN 1;
+//     END IF;
+
+// END;
+// $$
+// LANGUAGE plpgsql;
