@@ -4,22 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{types::Decimal, PgPool};
 
 use crate::auth::Claims;
-
-#[derive(Serialize, sqlx::FromRow, Debug)]
-pub(crate) struct Post {
-    id: i32,
-    title: String,
-    first_choice: String,
-    second_choice: String,
-    votes: Decimal,
-    vote: i64,
-    first_choice_count: i64,
-    second_choice_count: i64,
-    choice_count: i32,
-    created_at: chrono::NaiveDateTime,
-}
 use crate::internal_error;
-
 pub(crate) async fn posts(
     Extension(pool): Extension<PgPool>,
     Extension(_): Extension<Claims>,
@@ -48,8 +33,6 @@ pub(crate) async fn vote(
 ) -> Result<axum::Json<i64>, (StatusCode, String)> {
     let vote_id = vote.id as i8;
 
-    println!("vote id is: {}", vote_id);
-
     match vote_id.into() {
         VoteChoice::UpVote => {
             let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
@@ -61,7 +44,6 @@ pub(crate) async fn vote(
                     .await
                     .map(|res: (i64,)| axum::Json(res.0))
                     .map_err(internal_error);
-            println!("err: {:?}", row.clone().err());
             row
         }
         VoteChoice::DownVote => {
@@ -79,9 +61,65 @@ pub(crate) async fn vote(
     }
 }
 
+pub(crate) async fn choice(
+    Extension(pool): Extension<PgPool>,
+    Extension(claims): Extension<Claims>,
+    Path(post_id): Path<String>,
+    choice: Query<ChoiceParam>,
+) -> Result<axum::Json<i64>, (StatusCode, String)> {
+    // let vote_id = vote.id as i8;
+    let choice = choice.num;
+
+    match (choice as i8).into() {
+        VoteChoice::UpVote => {
+            let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
+                sqlx::query_as("select toggle_vote($1, $2, $3)")
+                    .bind::<i64>(choice)
+                    .bind::<i64>(claims.sub.parse().unwrap())
+                    .bind::<i64>(post_id.parse().unwrap())
+                    .fetch_one(&pool)
+                    .await
+                    .map(|res: (i64,)| axum::Json(res.0))
+                    .map_err(internal_error);
+            row
+        }
+        VoteChoice::DownVote => {
+            let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
+                sqlx::query_as("select toggle_vote($1, $2, $3)")
+                    .bind::<i64>(choice)
+                    .bind::<i64>(claims.sub.parse().unwrap())
+                    .bind::<i64>(post_id.parse().unwrap())
+                    .fetch_one(&pool)
+                    .await
+                    .map(|res: (i64,)| axum::Json(res.0))
+                    .map_err(internal_error);
+            row
+        }
+    }
+}
+
+#[derive(Serialize, sqlx::FromRow, Debug)]
+pub(crate) struct Post {
+    id: i32,
+    title: String,
+    first_choice: String,
+    second_choice: String,
+    votes: Decimal,
+    vote: i64,
+    first_choice_count: i64,
+    second_choice_count: i64,
+    choice_count: i32,
+    created_at: chrono::NaiveDateTime,
+}
+
 #[derive(Deserialize, Debug)]
 pub(crate) struct VoteParam {
-    id: i8,
+    id: i64,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct ChoiceParam {
+    num: i64,
 }
 
 #[derive(Serialize, sqlx::FromRow, Debug)]
@@ -107,30 +145,3 @@ impl From<i8> for VoteChoice {
         }
     }
 }
-
-// CREATE OR REPLACE FUNCTION toggle_vote(
-//     inc bigint,
-//     uid bigint,
-//     pid bigint
-// )
-// RETURNS bigint AS $$
-// DECLARE
-//     row_exists bigint;
-// BEGIN
-
-//     SELECT 1
-//     INTO row_exists
-//     FROM vote
-//     WHERE = uid and post_id = pid;
-
-//     IF (row_exists > 0) THEN
-//         DELETE FROM vote WHERE user_id = uid and post_id = pid;
-//         RETURN 0;
-//     ELSE
-//         INSERT INTO vote(inc, user_id, post_id) VALUES(inc, uid, pid);
-//         RETURN 1;
-//     END IF;
-
-// END;
-// $$
-// LANGUAGE plpgsql;

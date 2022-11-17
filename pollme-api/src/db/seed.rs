@@ -22,13 +22,12 @@ pub async fn _seed_users(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn _seed_posts(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+pub async fn _seed_choices(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     for user_id in 1..=10 {
         sqlx::query(&format!(
-            "INSERT INTO public.post (title, first_choice, second_choice, user_id) VALUES('{}', '{}', '{}', {})",
-            Sentence(10..20).fake::<String>(),
+            "INSERT INTO public.choice (name, user_id, post_id) VALUES('{}', '{}', '{}')",
             Word().fake::<String>(),
-            Word().fake::<String>(),
+            user_id,
             user_id
         ))
         .execute(pool)
@@ -38,7 +37,21 @@ pub async fn _seed_posts(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn _seed_vote(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+pub async fn _seed_posts(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
+    for user_id in 1..=10 {
+        sqlx::query(&format!(
+            "INSERT INTO public.post (title, user_id) VALUES('{}', '{}')",
+            Sentence(10..20).fake::<String>(),
+            user_id,
+        ))
+        .execute(pool)
+        .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn _seed_votes(pool: &Pool<Postgres>) -> Result<(), sqlx::Error> {
     for post_and_user_id in 1..=10 {
         let inc;
         if post_and_user_id % 2 == 0 {
