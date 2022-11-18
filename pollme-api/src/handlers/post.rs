@@ -11,7 +11,7 @@ pub(crate) async fn posts(
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
     sqlx::query_as::<_, Post>(
         r#"
-    select p.id, title, p.first_choice, p.second_choice, coalesce(sum(v.inc),0) as votes, coalesce(v.inc,0) as vote,
+    select p.id, title, coalesce(sum(v.inc),0) as votes, coalesce(v.inc,0) as vote,
     sum(p.first_choice_count) as first_choice_count, sum(p.second_choice_count) as
     second_choice_count, (p.first_choice_count + p.second_choice_count) as choice_count,
     p.created_at from post p left join vote v on p.id = v.post_id group by p.id, title, v.inc,
@@ -19,6 +19,8 @@ pub(crate) async fn posts(
     p.created_at desc;
         "#,
     )
+    // select * from choice where post_id=1 and  user_id is not null;
+    // this to fetch number of votes for choices later
     .fetch_all(&pool)
     .await
     .map(|posts| axum::Json(posts))
@@ -67,7 +69,6 @@ pub(crate) async fn choice(
     Path(post_id): Path<String>,
     choice: Query<ChoiceParam>,
 ) -> Result<axum::Json<i64>, (StatusCode, String)> {
-    // let vote_id = vote.id as i8;
     let choice = choice.num;
 
     match (choice as i8).into() {

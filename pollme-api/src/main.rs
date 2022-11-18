@@ -19,10 +19,7 @@ use auth::{auth, login, signup};
 use handlers::post::{posts, vote};
 use handlers::users::{create_user, users};
 
-use crate::{
-    db::seed::{_seed_choices, _seed_posts, _seed_users, _seed_votes},
-    handlers::post::choice,
-};
+use crate::handlers::post::choice;
 
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
@@ -55,11 +52,6 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
 
     println!("Connected to database");
-
-    _seed_users(&pool).await?;
-    _seed_posts(&pool).await?;
-    _seed_votes(&pool).await?;
-    _seed_choices(&pool).await?;
 
     let with_auth = Router::new()
         .route("/posts", get(posts))

@@ -25,6 +25,8 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 		}
 	});
 
+	console.log('response is: ', res);
+
 	const posts: Post[] = await res.json();
 	console.log('posts: ', posts);
 
