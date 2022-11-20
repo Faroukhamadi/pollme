@@ -1,6 +1,7 @@
 <script lang="ts">
 	import delay from '$lib/utils/delay';
 	import timeSince from '$lib/utils/timeSince';
+	import { DEV_ORIGIN } from '$lib/constants';
 	import type { Post } from '../../routes/+page.server';
 
 	export let post: Post;
@@ -19,7 +20,7 @@
 			class="disabled:cursor-pointer"
 			on:click={() => {
 				isFetching = true;
-				fetch(`http://localhost:3000/posts/${post.id}/vote?id=${Vote.Upvote}`, {
+				fetch(`${DEV_ORIGIN}/posts/${post.id}/vote?id=${Vote.Upvote}`, {
 					credentials: 'include',
 					method: 'POST'
 				})
@@ -40,7 +41,10 @@
 							})
 							.catch((e) => console.error(e));
 					})
-					.catch((e) => console.error(e));
+					.catch((e) => {
+						console.log('inside the catch');
+						console.error(e);
+					});
 			}}
 		>
 			<svg
@@ -63,7 +67,7 @@
 			class="disabled:cursor-pointer"
 			on:click={() => {
 				isFetching = true;
-				fetch(`http://localhost:3000/posts/${post.id}/vote?id=${Vote.Downvote}`, {
+				fetch(`${DEV_ORIGIN}/posts/${post.id}/vote?id=${Vote.Downvote}`, {
 					credentials: 'include',
 					method: 'POST'
 				})
@@ -104,13 +108,24 @@
 	</div>
 	<div class="flex flex-col">
 		<h3 class="text-xl">{post.title.slice(50)}...</h3>
-		<div>
-			<button class="btn btn-sm">{post.first_choice}</button>
-			<button class="btn btn-sm">{post.second_choice}</button>
+		<div class="flex gap-2">
+			{#if post.choices}
+				{#each post.choices as choice}
+					<button class="btn btn-sm">{choice.name}</button>
+				{/each}
+			{:else}
+				<p>No thingies :(</p>
+			{/if}
+
+			<!-- <button class="btn btn-sm">{post.first_choice}</button>
+			<button class="btn btn-sm">{post.second_choice}</button> -->
 		</div>
 		<div class="flex gap-5 text-sm">
 			<p>{post.choice_count} votes</p>
 			<p class="text-slate-500">submitted {timeSince(Date.parse(post.created_at))} ago</p>
+			<!-- TODO: Remove this later, only used for debugging -->
+			<pre>post id: {post.id}</pre>
+			<pre>choice count: {post.choice_count}</pre>
 		</div>
 	</div>
 </div>

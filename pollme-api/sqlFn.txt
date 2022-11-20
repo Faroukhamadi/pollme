@@ -1,0 +1,33 @@
+CREATE OR REPLACE FUNCTION toggle_vote(
+     input_inc bigint,
+     uid bigint,
+     pid bigint
+ )
+ RETURNS bigint AS $$
+ DECLARE
+     row_exists bigint;
+     opposite_row_exists bigint;
+ BEGIN
+     SELECT 1
+     INTO row_exists
+     FROM vote v
+     WHERE user_id = uid and post_id = pid and v.inc = input_inc;
+     IF (row_exists > 0) THEN
+         DELETE FROM vote WHERE user_id = uid and post_id = pid;
+         RETURN 0;
+     ELSE
+          SELECT 1
+          INTO opposite_row_exists
+          FROM vote v
+          WHERE user_id = uid and post_id = pid;
+          IF (opposite_row_exists > 0) THEN
+              UPDATE vote v SET inc = input_inc WHERE user_id = uid and post_id = pid;
+              RETURN 0;
+          ELSE
+              INSERT INTO vote (user_id, post_id, inc) VALUES (uid, pid, input_inc);
+              RETURN 1;
+          END IF;
+     END IF;
+ END;
+ $$
+ LANGUAGE plpgsql;

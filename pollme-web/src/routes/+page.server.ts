@@ -1,34 +1,40 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { DEV_ORIGIN } from '$lib/constants';
+export interface Choice {
+	id: number;
+	name: string;
+}
 
 export interface Post {
 	id: number;
 	title: string;
-	first_choice: string;
-	second_choice: string;
 	votes: string;
 	vote: number;
-	first_choice_count: number;
-	second_choice_count: number;
 	choice_count: number;
 	created_at: string;
+	choices: Choice[];
 }
 
 export const load: PageServerLoad = async ({ fetch, locals }) => {
 	if (!locals.user) {
 		throw redirect(307, '/login');
 	}
-	const res = await fetch('http://localhost:3000/posts', {
+	const res = await fetch(`${DEV_ORIGIN}/posts`, {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json'
 		}
 	});
 
-	console.log('response is: ', res);
-
 	const posts: Post[] = await res.json();
-	console.log('posts: ', posts);
+
+	for (let i = 0; i < posts.length; i++) {
+		const res = await fetch(`${DEV_ORIGIN}/posts/${posts[i].id}/choices`);
+		const choices: Choice[] = await res.json();
+
+		posts[i].choices = choices;
+	}
 
 	return {
 		posts

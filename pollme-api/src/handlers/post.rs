@@ -35,6 +35,7 @@ pub(crate) async fn vote(
 
     match vote_id.into() {
         VoteChoice::UpVote => {
+            println!("inside the first one");
             let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
                 sqlx::query_as("select toggle_vote($1, $2, $3)")
                     .bind::<i64>(vote_id as i64)

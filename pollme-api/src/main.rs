@@ -57,7 +57,6 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
         .route("/posts/:post_id/vote", post(vote))
-        // .route("/posts/:post_id", post(choice))
         .route("/posts/:post_id/choices", get(post_choices))
         .layer(middleware::from_fn(auth));
 
