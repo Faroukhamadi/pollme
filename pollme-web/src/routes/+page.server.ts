@@ -4,6 +4,7 @@ import { DEV_ORIGIN } from '$lib/constants';
 export interface Choice {
 	id: number;
 	name: string;
+	user_id?: number;
 }
 
 export interface Post {

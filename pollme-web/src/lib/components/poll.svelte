@@ -109,23 +109,15 @@
 	<div class="flex flex-col">
 		<h3 class="text-xl">{post.title.slice(50)}...</h3>
 		<div class="flex gap-2">
-			{#if post.choices}
-				{#each post.choices as choice}
-					<button class="btn btn-sm">{choice.name}</button>
-				{/each}
+			{#each post.choices as choice}
+				<button class="btn btn-sm">{choice.name}</button>
 			{:else}
-				<p>No thingies :(</p>
-			{/if}
-
-			<!-- <button class="btn btn-sm">{post.first_choice}</button>
-			<button class="btn btn-sm">{post.second_choice}</button> -->
+				<p class="font-bold my-2">No choices yet!</p>
+			{/each}
 		</div>
 		<div class="flex gap-5 text-sm">
 			<p>{post.choice_count} votes</p>
 			<p class="text-slate-500">submitted {timeSince(Date.parse(post.created_at))} ago</p>
-			<!-- TODO: Remove this later, only used for debugging -->
-			<pre>post id: {post.id}</pre>
-			<pre>choice count: {post.choice_count}</pre>
 		</div>
 	</div>
 </div>

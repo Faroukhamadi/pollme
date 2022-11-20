@@ -68,7 +68,7 @@ pub(crate) async fn post_choices(
 ) -> Result<axum::Json<Vec<Choice>>, (StatusCode, String)> {
     let post_id = post_id.parse::<i16>().unwrap();
     sqlx::query_as::<_, Choice>(&format!(
-        "select distinct on(name) name , id from choice where post_id = {post_id};"
+        "select distinct on(name) name, id, user_id from choice where post_id = {post_id};"
     ))
     .fetch_all(&pool)
     .await
@@ -145,6 +145,7 @@ pub(crate) struct Vote {
 pub(crate) struct Choice {
     name: String,
     id: i32,
+    user_id: Option<i32>,
 }
 
 pub(crate) enum VoteChoice {
