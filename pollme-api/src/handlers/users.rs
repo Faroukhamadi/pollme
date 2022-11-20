@@ -27,7 +27,6 @@ pub(crate) async fn users(
         .map_err(internal_error)
 }
 
-// TODO: Hash entered password
 pub(crate) async fn create_user(
     Extension(pool): Extension<PgPool>,
     Json(payload): Json<CreateUser>,

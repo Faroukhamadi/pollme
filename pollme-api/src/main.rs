@@ -19,7 +19,7 @@ use auth::{auth, login, signup};
 use handlers::post::{posts, vote};
 use handlers::users::{create_user, users};
 
-use crate::handlers::post::choice;
+use crate::handlers::post::{_choice, post_choices};
 
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
@@ -57,7 +57,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/posts", get(posts))
         .route("/users", get(users).post(create_user))
         .route("/posts/:post_id/vote", post(vote))
-        .route("/posts/:post_id", post(choice))
+        // .route("/posts/:post_id", post(choice))
+        .route("/posts/:post_id/choices", get(post_choices))
         .layer(middleware::from_fn(auth));
 
     let without_auth = Router::new()

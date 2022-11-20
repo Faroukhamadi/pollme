@@ -5,6 +5,7 @@ use sqlx::{types::Decimal, PgPool};
 
 use crate::auth::Claims;
 use crate::internal_error;
+
 pub(crate) async fn posts(
     Extension(pool): Extension<PgPool>,
     Extension(_): Extension<Claims>,
@@ -18,8 +19,6 @@ pub(crate) async fn posts(
     group by p.id, title, v.inc, p.created_at
         "#,
     )
-    // select * from choice where post_id=1 and  user_id is not null;
-    // this to fetch number of votes for choices later
     .fetch_all(&pool)
     .await
     .map(|posts| axum::Json(posts))
@@ -61,8 +60,22 @@ pub(crate) async fn vote(
         }
     }
 }
+pub(crate) async fn post_choices(
+    Extension(pool): Extension<PgPool>,
+    Extension(_): Extension<Claims>,
+    Path(post_id): Path<String>,
+) -> Result<axum::Json<Vec<Choice>>, (StatusCode, String)> {
+    let post_id = post_id.parse::<i16>().unwrap();
+    sqlx::query_as::<_, Choice>(&format!(
+        "select distinct on(name) name , id from choice where post_id = {post_id};"
+    ))
+    .fetch_all(&pool)
+    .await
+    .map(|posts| axum::Json(posts))
+    .map_err(internal_error)
+}
 
-pub(crate) async fn choice(
+pub(crate) async fn _choice(
     Extension(pool): Extension<PgPool>,
     Extension(claims): Extension<Claims>,
     Path(post_id): Path<String>,
@@ -125,6 +138,12 @@ pub(crate) struct Vote {
     created_at: chrono::NaiveDateTime,
     user_id: i64,
     post_id: i64,
+}
+
+#[derive(Serialize, sqlx::FromRow, Debug)]
+pub(crate) struct Choice {
+    name: String,
+    id: i32,
 }
 
 pub(crate) enum VoteChoice {
