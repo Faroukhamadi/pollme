@@ -7,6 +7,7 @@ use axum::{
 };
 
 use dotenv::dotenv;
+use headers::{Header, HeaderName};
 use once_cell::sync::Lazy;
 use sqlx::postgres::PgPoolOptions;
 use std::net::{IpAddr, SocketAddr};
@@ -19,7 +20,9 @@ use auth::{auth, login, signup};
 use handlers::post::{posts, vote};
 use handlers::users::{create_user, users};
 
-use crate::handlers::post::{_choice, post_choices, user_choice};
+use crate::handlers::post::{
+    _choice, choices_count, post_choices, post_choices_count, user_choice,
+};
 
 static KEYS: Lazy<Keys> = Lazy::new(|| {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
@@ -58,7 +61,11 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/users", get(users).post(create_user))
         .route("/posts/:post_id/vote", post(vote))
         .route("/posts/:post_id/choices", get(post_choices))
-        .route("/choices/:id/:user_id", get(user_choice))
+        .route("/choices/:name/:user_id", get(user_choice))
+        // returns the number of choices given a name
+        .route("/choices/:name/count", get(choices_count))
+        // returns the total number of choices belonging to a post
+        .route("/choices/count/:post_id", get(post_choices_count))
         .layer(middleware::from_fn(auth));
 
     let without_auth = Router::new()

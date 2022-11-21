@@ -204,17 +204,12 @@ pub(crate) async fn signup(
 }
 
 pub(crate) async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
-    println!("AUTH MIDDLEWARE RUN");
-
     let cookie_header = req
         .headers()
         .get(header::COOKIE)
         .and_then(|header| header.to_str().ok());
 
-    println!("cookie header: {:?}", req.headers());
-
     let cookie = if let Some(cookie_header) = cookie_header {
-        println!("cookie_header: {:?}", cookie_header);
         cookie_header
     } else {
         return Err(StatusCode::UNAUTHORIZED);
@@ -224,7 +219,6 @@ pub(crate) async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Respon
         let token_data = decode::<Claims>(token_val, &KEYS.decoding, &Validation::default());
         if let Ok(token_data) = token_data {
             req.extensions_mut().insert(token_data.claims);
-            println!("we are going next");
             Ok(next.run(req).await)
         } else {
             Err(StatusCode::UNAUTHORIZED)

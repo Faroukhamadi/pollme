@@ -107,7 +107,7 @@
 		<h3 class="text-xl">{post.title.slice(50)}...</h3>
 		<div class="flex gap-2">
 			{#each post.choices as choice}
-				<button class="btn btn-sm">{choice.name}</button>
+				<button class="btn btn-sm my-2">{choice.name}</button>
 			{:else}
 				<p class="font-bold my-2">No choices yet!</p>
 			{/each}
