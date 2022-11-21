@@ -134,9 +134,9 @@ pub(crate) async fn _choice(
 pub(crate) struct Post {
     id: i32,
     title: String,
-    votes: Decimal,
-    vote: i64,
-    choice_count: i64,
+    votes: i64,
+    // votes: Decimal,
+    // vote: i64,
     created_at: chrono::NaiveDateTime,
 }
 
@@ -163,7 +163,6 @@ pub(crate) struct Vote {
 pub(crate) struct Choice {
     name: String,
     id: i32,
-    // user_id: Option<i32>,
 }
 
 pub(crate) enum VoteChoice {

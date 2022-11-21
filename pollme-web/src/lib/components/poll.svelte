@@ -113,7 +113,8 @@
 			{/each}
 		</div>
 		<div class="flex gap-5 text-sm">
-			<p>{post.choice_count} votes</p>
+			<!-- This is useless -->
+			<!-- <p>{post.choice_count} votes</p> -->
 			<p class="text-slate-500">submitted {timeSince(Date.parse(post.created_at))} ago</p>
 		</div>
 	</div>
