@@ -106,15 +106,31 @@
 	<div class="flex flex-col">
 		<h3 class="text-xl">{post.title.slice(50)}...</h3>
 		<div class="flex gap-2">
-			{#each post.choices as choice}
-				<button class="btn btn-sm my-2">{choice.name}</button>
+			{#if post.hasVoted}
+				{#each post.choices as choice}
+					<div class="btn btn-disabled bg-opacity-30  my-2 flex gap-5">
+						<div
+							class="radial-progress"
+							style={'--value:' +
+								Math.round((choice.count / post.choicesCount) * 100).toString() +
+								'; --size:2rem; --thickness: 3px;'}
+						>
+							{Math.round((choice.count / post.choicesCount) * 100)}
+						</div>
+						{choice.name}
+					</div>
+				{:else}
+					<p class="font-bold my-2">No choices yet!</p>
+				{/each}
 			{:else}
-				<p class="font-bold my-2">No choices yet!</p>
-			{/each}
+				{#each post.choices as choice}
+					<button class="btn btn-sm my-2">{choice.name}</button>
+				{:else}
+					<p class="font-bold my-2">No choices yet!</p>
+				{/each}
+			{/if}
 		</div>
 		<div class="flex gap-5 text-sm">
-			<!-- This is useless -->
-			<!-- <p>{post.choice_count} votes</p> -->
 			<p class="text-slate-500">submitted {timeSince(Date.parse(post.created_at))} ago</p>
 		</div>
 	</div>
