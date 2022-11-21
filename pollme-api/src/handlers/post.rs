@@ -35,7 +35,6 @@ pub(crate) async fn vote(
 
     match vote_id.into() {
         VoteChoice::UpVote => {
-            println!("inside the first one");
             let row: Result<axum::Json<i64>, (axum::http::StatusCode, std::string::String)> =
                 sqlx::query_as("select toggle_vote($1, $2, $3)")
                     .bind::<i64>(vote_id as i64)
@@ -61,6 +60,7 @@ pub(crate) async fn vote(
         }
     }
 }
+
 pub(crate) async fn post_choices(
     Extension(pool): Extension<PgPool>,
     Extension(_): Extension<Claims>,
@@ -68,11 +68,30 @@ pub(crate) async fn post_choices(
 ) -> Result<axum::Json<Vec<Choice>>, (StatusCode, String)> {
     let post_id = post_id.parse::<i16>().unwrap();
     sqlx::query_as::<_, Choice>(&format!(
-        "select distinct on(name) name, id, user_id from choice where post_id = {post_id};"
+        "select distinct on(name) name, id from choice where post_id = {post_id};"
     ))
     .fetch_all(&pool)
     .await
-    .map(|posts| axum::Json(posts))
+    .map(|choices| axum::Json(choices))
+    .map_err(internal_error)
+}
+
+pub(crate) async fn user_choice(
+    Extension(pool): Extension<PgPool>,
+    Extension(_): Extension<Claims>,
+    Path((id, user_id)): Path<(String, String)>,
+    // Path(user_id): Path<String>,
+    // Path(id): Path<String>,
+) -> Result<axum::Json<Option<Choice>>, (StatusCode, String)> {
+    let user_id = user_id.parse::<i16>().unwrap();
+    let id = id.parse::<i16>().unwrap();
+    // TODO: fix this
+    sqlx::query_as::<_, Choice>(&format!(
+        "select distinct on(name) name, id from choice where id = {id} and user_id = {user_id};"
+    ))
+    .fetch_optional(&pool)
+    .await
+    .map(|choice| axum::Json(choice))
     .map_err(internal_error)
 }
 
@@ -145,7 +164,7 @@ pub(crate) struct Vote {
 pub(crate) struct Choice {
     name: String,
     id: i32,
-    user_id: Option<i32>,
+    // user_id: Option<i32>,
 }
 
 pub(crate) enum VoteChoice {

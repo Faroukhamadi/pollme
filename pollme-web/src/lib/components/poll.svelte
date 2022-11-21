@@ -41,10 +41,7 @@
 							})
 							.catch((e) => console.error(e));
 					})
-					.catch((e) => {
-						console.log('inside the catch');
-						console.error(e);
-					});
+					.catch((e) => console.error(e));
 			}}
 		>
 			<svg

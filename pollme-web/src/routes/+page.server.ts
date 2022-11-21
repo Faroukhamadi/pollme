@@ -4,7 +4,6 @@ import { DEV_ORIGIN } from '$lib/constants';
 export interface Choice {
 	id: number;
 	name: string;
-	user_id?: number;
 }
 
 export interface Post {
@@ -15,6 +14,7 @@ export interface Post {
 	choice_count: number;
 	created_at: string;
 	choices: Choice[];
+	hasVoted: boolean;
 }
 
 export const load: PageServerLoad = async ({ fetch, locals }) => {
@@ -33,8 +33,14 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 	for (let i = 0; i < posts.length; i++) {
 		const res = await fetch(`${DEV_ORIGIN}/posts/${posts[i].id}/choices`);
 		const choices: Choice[] = await res.json();
-
 		posts[i].choices = choices;
+		for (let j = 0; j < posts[i].choices.length; j++) {
+			const res = await fetch(`${DEV_ORIGIN}/choices/${posts[i].choices[i].id}/${locals.user.sub}`);
+			console.log('resssss: ', res);
+			const thingie = await res.json();
+			console.log('res inside inside: ' + thingie);
+			// "/choices/:id/:user_id"
+		}
 	}
 
 	return {
