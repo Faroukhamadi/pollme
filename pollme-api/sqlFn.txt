@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION toggle_vote(
           WHERE user_id = uid and post_id = pid;
           IF (opposite_row_exists > 0) THEN
               UPDATE vote v SET inc = input_inc WHERE user_id = uid and post_id = pid;
-              RETURN 0;
+              RETURN 1;
           ELSE
               INSERT INTO vote (user_id, post_id, inc) VALUES (uid, pid, input_inc);
               RETURN 1;

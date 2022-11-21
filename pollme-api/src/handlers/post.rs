@@ -12,11 +12,10 @@ pub(crate) async fn posts(
 ) -> Result<axum::Json<Vec<Post>>, (StatusCode, String)> {
     sqlx::query_as::<_, Post>(
         r#"
-    select p.id, title, coalesce(sum(v.inc),0) as votes, coalesce(v.inc,0) as vote,
-    count(c.id) as choice_count, p.created_at from post p left join vote v on p.id = v.post_id
-    left join choice c on p.id = c.post_id
-    where c.user_id is not null
-    group by p.id, title, v.inc, p.created_at
+    select distinct on (p.id) p.id, title, coalesce(sum(v.inc), 0)  as votes, coalesce(v.inc,0) as vote,
+    count(case when c.user_id is not null then c.id end) as choice_count, p.created_at from post p left join vote v on p.id = v.post_id
+    left join choice c on p.id = c.post_id and c.user_id = p.user_id
+    group by p.id, title, v.inc, p.created_at;
         "#,
     )
     .fetch_all(&pool)

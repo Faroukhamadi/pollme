@@ -34,12 +34,14 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 		const res = await fetch(`${DEV_ORIGIN}/posts/${posts[i].id}/choices`);
 		const choices: Choice[] = await res.json();
 		posts[i].choices = choices;
+		console.log('number of choices for each post: ', posts[i].choices.length);
 		for (let j = 0; j < posts[i].choices.length; j++) {
-			const res = await fetch(`${DEV_ORIGIN}/choices/${posts[i].choices[i].id}/${locals.user.sub}`);
-			console.log('resssss: ', res);
+			const res = await fetch(`${DEV_ORIGIN}/choices/${posts[i].choices[j].id}/${locals.user.sub}`);
+			// console.log('url is: ', res.url);
+			// console.log('choice id: ' + posts[i].choices[j].id);
+
 			const thingie = await res.json();
-			console.log('res inside inside: ' + thingie);
-			// "/choices/:id/:user_id"
+			// console.log('thingie is: ' + thingie);
 		}
 	}
 
