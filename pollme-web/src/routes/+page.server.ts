@@ -59,12 +59,14 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 					const res2 = await fetch(`${DEV_ORIGIN}/choices/${posts[i].choices[k].name}/count`);
 					const choiceCount: number = parseInt(await res2.text());
 					posts[i].choices[k].count = choiceCount;
+					console.log('choice count: ', choiceCount);
 				}
 			}
 		}
 	}
 
 	return {
-		posts
+		posts,
+		time: new Date()
 	};
 };

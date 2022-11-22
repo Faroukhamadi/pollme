@@ -110,6 +110,21 @@ pub(crate) async fn choices_count(
     .map_err(internal_error)
 }
 
+pub(crate) async fn make_choice(
+    Extension(pool): Extension<PgPool>,
+    Extension(_): Extension<Claims>,
+    choice: Query<MakeChoiceParam>,
+) -> Result<axum::Json<Choice>, (StatusCode, String)> {
+    sqlx::query_as(&format!(
+        "insert into choice (name, post_id, user_id) values('{}', {}, {}) returning name, id, post_id;",
+        choice.name, choice.post_id, choice.user_id,
+    ))
+    .fetch_one(&pool)
+    .await
+    .map(|choice| axum::Json(choice))
+    .map_err(internal_error)
+}
+
 pub(crate) async fn user_choice(
     Extension(pool): Extension<PgPool>,
     Extension(_): Extension<Claims>,
@@ -173,6 +188,13 @@ pub(crate) struct Post {
 #[derive(Deserialize, Debug)]
 pub(crate) struct VoteParam {
     id: i64,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct MakeChoiceParam {
+    name: String,
+    post_id: i64,
+    user_id: i64,
 }
 
 #[derive(Deserialize, Debug)]

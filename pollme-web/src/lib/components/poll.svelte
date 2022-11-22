@@ -1,6 +1,8 @@
 <script lang="ts">
 	import delay from '$lib/utils/delay';
 	import timeSince from '$lib/utils/timeSince';
+	import percentage from '$lib/utils/percentage';
+	import { page } from '$app/stores';
 	import { DEV_ORIGIN } from '$lib/constants';
 	import type { Post } from '../../routes/+page.server';
 
@@ -106,16 +108,17 @@
 	<div class="flex flex-col">
 		<h3 class="text-xl">{post.title.slice(50)}...</h3>
 		<div class="flex gap-2">
+			<!-- starts here -->
 			{#if post.hasVoted}
 				{#each post.choices as choice}
 					<div class="btn btn-disabled bg-opacity-30  my-2 flex gap-5">
 						<div
 							class="radial-progress"
 							style={'--value:' +
-								Math.round((choice.count / post.choicesCount) * 100).toString() +
+								percentage(choice.count, post.choicesCount).toString() +
 								'; --size:2rem; --thickness: 3px;'}
 						>
-							{Math.round((choice.count / post.choicesCount) * 100)}
+							{percentage(choice.count, post.choicesCount)}
 						</div>
 						{choice.name}
 					</div>
@@ -123,12 +126,39 @@
 					<p class="font-bold my-2">No choices yet!</p>
 				{/each}
 			{:else}
-				{#each post.choices as choice}
-					<button class="btn btn-sm my-2">{choice.name}</button>
+				{#each post.choices as choice, i}
+					<button
+						on:click={async () => {
+							let res = await fetch(
+								`${DEV_ORIGIN}/choices?name=${post.choices[i].name}&post_id=${post.id}&user_id=${$page.data.user?.sub}`,
+								{
+									credentials: 'include',
+									method: 'POST'
+								}
+							);
+							const choice = await res.json();
+							post.hasVoted = true;
+							res = await fetch(`${DEV_ORIGIN}/choices/count/${post.choices[i].post_id}`, {
+								credentials: 'include'
+							});
+							const totalCount = await res.json();
+							post.choicesCount = totalCount;
+
+							for (let k = 0; k < post.choices.length; k++) {
+								const res2 = await fetch(`${DEV_ORIGIN}/choices/${post.choices[k].name}/count`, {
+									credentials: 'include'
+								});
+								const choiceCount = parseInt(await res2.text());
+								post.choices[k].count = choiceCount;
+							}
+						}}
+						class="btn btn-sm my-2">{choice.name}</button
+					>
 				{:else}
 					<p class="font-bold my-2">No choices yet!</p>
 				{/each}
 			{/if}
+			<!-- ends here -->
 		</div>
 		<div class="flex gap-5 text-sm">
 			<p class="text-slate-500">submitted {timeSince(Date.parse(post.created_at))} ago</p>

@@ -21,7 +21,7 @@ use handlers::post::{posts, vote};
 use handlers::users::{create_user, users};
 
 use crate::handlers::post::{
-    _choice, choices_count, post_choices, post_choices_count, user_choice,
+    _choice, choices_count, make_choice, post_choices, post_choices_count, user_choice,
 };
 
 static KEYS: Lazy<Keys> = Lazy::new(|| {
@@ -66,6 +66,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/choices/:name/count", get(choices_count))
         // returns the total number of choices belonging to a post
         .route("/choices/count/:post_id", get(post_choices_count))
+        .route("/choices", post(make_choice))
         .layer(middleware::from_fn(auth));
 
     let without_auth = Router::new()
