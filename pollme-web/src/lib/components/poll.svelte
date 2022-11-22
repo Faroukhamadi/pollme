@@ -31,13 +31,13 @@
 							.then(() => {
 								isFetching = false;
 								if (post.vote === 1) {
-									post.votes = (parseInt(post.votes) - 1).toString();
+									post.votes -= 1;
 									post.vote = 0;
 								} else if (post.vote === -1) {
-									post.votes = (parseInt(post.votes) + 2).toString();
+									post.votes = post.votes + 2;
 									post.vote = 1;
 								} else if (post.vote === 0) {
-									post.votes = (parseInt(post.votes) + 1).toString();
+									post.votes += 1;
 									post.vote = 1;
 								}
 							})
@@ -75,13 +75,13 @@
 							.then(() => {
 								isFetching = false;
 								if (post.vote === 1) {
-									post.votes = (parseInt(post.votes) - 2).toString();
+									post.votes -= 2;
 									post.vote = -1;
 								} else if (post.vote === -1) {
-									post.votes = (parseInt(post.votes) + 1).toString();
+									post.votes += 1;
 									post.vote = 0;
 								} else if (post.vote === 0) {
-									post.votes = (parseInt(post.votes) - 1).toString();
+									post.votes -= 1;
 									post.vote = -1;
 								}
 							})

@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query};
 use axum::{http::StatusCode, Extension};
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Decimal, PgPool};
+use sqlx::PgPool;
 
 use crate::auth::Claims;
 use crate::internal_error;
@@ -23,11 +23,6 @@ pub(crate) async fn posts(
     .map(|posts| axum::Json(posts))
     .map_err(internal_error)
 }
-
-// select count(*) from choice where name = 'nsam' and user_id is not null;
-
-// This is how you get the choice count
-// count(case when c.user_id is not null then c.id end) as choice_count,
 
 pub(crate) async fn vote(
     Extension(pool): Extension<PgPool>,
@@ -125,6 +120,21 @@ pub(crate) async fn make_choice(
     .map_err(internal_error)
 }
 
+pub(crate) async fn user_vote(
+    Extension(pool): Extension<PgPool>,
+    Extension(_): Extension<Claims>,
+    vote: Query<UserVoteParam>,
+) -> Result<axum::Json<i64>, (StatusCode, String)> {
+    sqlx::query_as(&format!(
+        "select coalesce((select inc from vote where post_id = {} and user_id = {}), 0)",
+        vote.post_id, vote.user_id
+    ))
+    .fetch_one(&pool)
+    .await
+    .map(|choice: (i64,)| axum::Json(choice.0))
+    .map_err(internal_error)
+}
+
 pub(crate) async fn user_choice(
     Extension(pool): Extension<PgPool>,
     Extension(_): Extension<Claims>,
@@ -193,6 +203,12 @@ pub(crate) struct VoteParam {
 #[derive(Deserialize, Debug)]
 pub(crate) struct MakeChoiceParam {
     name: String,
+    post_id: i64,
+    user_id: i64,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct UserVoteParam {
     post_id: i64,
     user_id: i64,
 }

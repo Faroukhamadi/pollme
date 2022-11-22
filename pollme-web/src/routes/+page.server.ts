@@ -12,6 +12,7 @@ export interface Post {
 	id: number;
 	title: string;
 	votes: number;
+	vote: number;
 	created_at: string;
 	choices: Choice[];
 	choicesCount: number;
@@ -36,6 +37,13 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 
 		const res = await fetch(`${DEV_ORIGIN}/posts/${posts[i].id}/choices`);
 
+		const response = await fetch(
+			`${DEV_ORIGIN}/vote?post_id=${posts[i].id}&user_id=${locals.user.sub}`
+		);
+
+		const vote = await response.json();
+		posts[i].vote = vote;
+
 		const choices: Choice[] = await res.json();
 		posts[i].choices = choices;
 
@@ -59,14 +67,12 @@ export const load: PageServerLoad = async ({ fetch, locals }) => {
 					const res2 = await fetch(`${DEV_ORIGIN}/choices/${posts[i].choices[k].name}/count`);
 					const choiceCount: number = parseInt(await res2.text());
 					posts[i].choices[k].count = choiceCount;
-					console.log('choice count: ', choiceCount);
 				}
 			}
 		}
 	}
 
 	return {
-		posts,
-		time: new Date()
+		posts
 	};
 };

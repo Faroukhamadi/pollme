@@ -7,7 +7,6 @@ use axum::{
 };
 
 use dotenv::dotenv;
-use headers::{Header, HeaderName};
 use once_cell::sync::Lazy;
 use sqlx::postgres::PgPoolOptions;
 use std::net::{IpAddr, SocketAddr};
@@ -21,7 +20,7 @@ use handlers::post::{posts, vote};
 use handlers::users::{create_user, users};
 
 use crate::handlers::post::{
-    _choice, choices_count, make_choice, post_choices, post_choices_count, user_choice,
+    choices_count, make_choice, post_choices, post_choices_count, user_choice, user_vote,
 };
 
 static KEYS: Lazy<Keys> = Lazy::new(|| {
@@ -67,6 +66,7 @@ async fn main() -> Result<(), sqlx::Error> {
         // returns the total number of choices belonging to a post
         .route("/choices/count/:post_id", get(post_choices_count))
         .route("/choices", post(make_choice))
+        .route("/vote", get(user_vote))
         .layer(middleware::from_fn(auth));
 
     let without_auth = Router::new()
